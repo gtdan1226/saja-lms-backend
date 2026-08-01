@@ -1,0 +1,21 @@
+{
+  "name": "carnival-lion-lms",
+  "version": "0.1.0",
+  "private": true,
+  "description": "카니발 라이언 LMS pre-API deployment build",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js --port 8941",
+    "build": "node scripts/write-config.js",
+    "check": "node --check server.js && node --check app.js && node --check smoke-test.js",
+    "smoke": "node smoke-test.js http://127.0.0.1:8941"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
+    "@aws-sdk/s3-request-presigner": "^3.1101.0"
+  }
+}

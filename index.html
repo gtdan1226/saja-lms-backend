@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>카니발 라이언 LMS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="강의실">
+        <div class="brand">
+          <div class="brand-mark">CL</div>
+          <div>
+            <strong>카니발 라이언 LMS</strong>
+            <span>local server build</span>
+          </div>
+        </div>
+
+        <div class="student-mini">
+          <span class="status-dot"></span>
+          <div>
+            <strong id="miniName">김수강</strong>
+            <span id="miniEmail">student@example.com</span>
+          </div>
+        </div>
+
+        <nav class="course-nav" id="courseNav"></nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">로컬 서버 모드</p>
+            <h1 id="courseTitle">강의실</h1>
+          </div>
+          <div class="view-switch" role="tablist" aria-label="화면 전환">
+            <button class="segmented is-active" id="studentViewBtn" type="button">학생 화면</button>
+            <button class="segmented" id="adminViewBtn" type="button">운영 화면</button>
+            <button class="segmented" id="securityViewBtn" type="button">보안 화면</button>
+          </div>
+        </header>
+
+        <section class="gate-band" id="gateBand"></section>
+
+        <section class="student-layout" id="studentView">
+          <div class="lesson-column">
+            <section class="video-section">
+              <div class="video-frame" id="videoFrame">
+                <div class="course-art" id="courseArt"></div>
+                <div class="video-copy">
+                  <span id="videoChapterLabel">Chapter 1</span>
+                  <strong id="videoTitle">강의 제목</strong>
+                  <button class="primary-action" id="watchButton" type="button">재생 시작</button>
+                </div>
+                <div class="watermark" id="watermark">김수강 · student@example.com · LMS-001</div>
+              </div>
+              <div class="lesson-meta">
+                <div>
+                  <span>보안 상태</span>
+                  <strong id="securityStatus">계약서 대기</strong>
+                </div>
+                <div>
+                  <span>진도율</span>
+                  <strong id="progressLabel">0%</strong>
+                </div>
+                <div>
+                  <span>수강권</span>
+                  <strong id="enrollmentLabel">대기</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="assignment-section">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">챕터별 과제</p>
+                  <h2 id="assignmentTitle">과제 제출</h2>
+                </div>
+                <span class="pill" id="feedbackStatus">피드백 없음</span>
+              </div>
+              <textarea id="assignmentText" rows="6" placeholder="이번 챕터 과제 내용이나 피드백 받고 싶은 지점을 적어주세요."></textarea>
+              <div class="submission-row">
+                <label class="file-trigger" for="assignmentFile">
+                  <span id="fileLabel">자료 선택</span>
+                  <input id="assignmentFile" type="file" />
+                </label>
+                <button class="secondary-action" id="submitAssignment" type="button">피드백 요청</button>
+              </div>
+              <div class="feedback-list" id="feedbackList"></div>
+            </section>
+          </div>
+
+          <aside class="chapter-panel">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">커리큘럼</p>
+                <h2>챕터</h2>
+              </div>
+              <span id="chapterCount">0개</span>
+            </div>
+            <div class="chapter-list" id="chapterList"></div>
+          </aside>
+        </section>
+
+        <section class="admin-layout is-hidden" id="adminView">
+          <div class="admin-grid">
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">초대 관리</p>
+                  <h2>초대 링크와 발송함</h2>
+                </div>
+                <div class="heading-actions">
+                  <button class="ghost-action" id="resendInvite" type="button">초대 재발송</button>
+                  <button class="ghost-action" id="resetDemo" type="button">초기 상태</button>
+                </div>
+              </div>
+              <div class="invite-record" id="inviteRecord"></div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">주문 연결</p>
+                  <h2>수강권 원장</h2>
+                </div>
+                <span class="pill positive">결제 확인</span>
+              </div>
+              <div class="ledger" id="ledger"></div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">입장 조건</p>
+                  <h2>계약서 상태</h2>
+                </div>
+                <button class="ghost-action" id="resetContract" type="button">초기화</button>
+              </div>
+              <div class="contract-record" id="contractRecord"></div>
+            </section>
+
+            <section class="admin-panel wide">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">운영 큐</p>
+                  <h2>과제와 피드백</h2>
+                </div>
+                <span class="pill" id="queueCount">0건</span>
+              </div>
+              <div class="admin-queue" id="adminQueue"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="security-layout is-hidden" id="securityView">
+          <div class="security-grid">
+            <section class="admin-panel drm-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">DRM 준비 상태</p>
+                  <h2>영상 보안 정책</h2>
+                </div>
+                <span class="pill positive">로컬 시뮬레이션</span>
+              </div>
+              <div class="drm-status-grid" id="drmStatusGrid"></div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">재생 권한</p>
+                  <h2>현재 세션</h2>
+                </div>
+                <button class="ghost-action" id="revokeSession" type="button">세션 종료</button>
+              </div>
+              <div class="playback-token" id="playbackToken"></div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">기기 관리</p>
+                  <h2>등록 기기</h2>
+                </div>
+                <div class="heading-actions">
+                  <button class="ghost-action" id="simulateDevice" type="button">새 기기 시뮬레이션</button>
+                  <button class="ghost-action" id="resetDevices" type="button">기기 초기화</button>
+                </div>
+              </div>
+              <div class="device-list" id="deviceList"></div>
+            </section>
+
+            <section class="admin-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">라이선스 요청</p>
+                  <h2>보안 로그</h2>
+                </div>
+                <span class="pill" id="licenseLogCount">0건</span>
+              </div>
+              <div class="license-log" id="licenseLog"></div>
+            </section>
+
+            <section class="admin-panel wide">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">실서버 연결 위치</p>
+                  <h2>DRM API 흐름</h2>
+                </div>
+              </div>
+              <div class="api-flow">
+                <div>
+                  <strong>1. 재생 요청</strong>
+                  <span>LMS가 주문, 계약서, 수강권, 기기 수를 확인합니다.</span>
+                </div>
+                <div>
+                  <strong>2. 서명 토큰</strong>
+                  <span>영상 manifest URL과 짧은 만료 시간의 재생 토큰을 발급합니다.</span>
+                </div>
+                <div>
+                  <strong>3. DRM 라이선스</strong>
+                  <span>Widevine, FairPlay, PlayReady 라이선스 서버가 키를 발급합니다.</span>
+                </div>
+                <div>
+                  <strong>4. 추적</strong>
+                  <span>워터마크, IP, 기기, 챕터, 토큰 해시를 로그로 남깁니다.</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="contract-modal" id="contractModal">
+      <form method="dialog">
+        <div class="modal-top">
+          <div>
+            <p class="eyebrow">필수 입장 계약서</p>
+            <h2>강의 콘텐츠 보호 및 LMS 이용 동의</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="닫기" type="submit">×</button>
+        </div>
+
+        <div class="contract-body">
+          <section>
+            <h3>1. 계정과 수강권</h3>
+            <p>수강권은 아임웹 결제가 확인된 주문 이메일과 LMS 계정 이메일이 일치할 때 활성화됩니다. 계정 대여, 공동 사용, 초대 링크 재배포는 허용되지 않습니다.</p>
+          </section>
+          <section>
+            <h3>2. 강의 영상과 자료 보호</h3>
+            <p>강의 영상, 자막, 자료, 과제 예시는 구매자 본인의 학습 목적으로만 사용할 수 있습니다. 녹화, 다운로드, 캡처물 공유, 재판매, 외부 배포는 제한됩니다.</p>
+          </section>
+          <section>
+            <h3>3. 워터마크와 보안 기록</h3>
+            <p>영상 재생 중 회원 이름, 이메일, 회원 ID가 화면에 표시될 수 있으며, 접속 기록과 재생 기록은 계정 보호와 유출 추적 목적으로 보관됩니다.</p>
+          </section>
+          <section>
+            <h3>4. 과제와 피드백</h3>
+            <p>제출한 과제와 피드백 요청 내용은 강의 운영, 학습 진도 확인, 답변 제공을 위해 사용됩니다. 보관 기간은 강의 종료 후 운영 정책에 따릅니다.</p>
+          </section>
+        </div>
+
+        <div class="signature-box">
+          <label>
+            이름
+            <input id="signatureName" autocomplete="name" />
+          </label>
+          <label>
+            이메일
+            <input id="signatureEmail" autocomplete="email" />
+          </label>
+          <label class="checkline">
+            <input id="signatureConfirm" type="checkbox" />
+            <span>위 계약 내용을 확인했고 전자서명으로 동의합니다.</span>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button class="secondary-action" value="cancel" type="submit">나중에</button>
+          <button class="primary-action" id="signContract" type="button">전자서명 완료</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
