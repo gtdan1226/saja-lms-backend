@@ -10,6 +10,9 @@ const { createClient } = require("@supabase/supabase-js");
 // Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+// 아임웹 웹훅 시크릿 (쿼리파라미터 ?secret=xxx 검증)
+const IMWEB_WEBHOOK_SECRET = process.env.IMWEB_WEBHOOK_SECRET || "";
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
   : null;
@@ -613,20 +616,39 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/imweb/webhooks/order-paid") {
+    if (IMWEB_WEBHOOK_SECRET && url.searchParams.get("secret") !== IMWEB_WEBHOOK_SECRET) {
+      sendError(res, 401, "웹훅 시크릿이 올바르지 않습니다.");
+      return;
+    }
     const body = await readJson(req);
-    const db = await updateDb((current) => {
-      const buyerEmail = String(body.buyerEmail || current.enrollment.buyerEmail).trim().toLowerCase();
-      const buyerName = String(body.buyerName || current.enrollment.buyerName).trim();
-      const courseIds = Array.isArray(body.courseIds) && body.courseIds.length ? body.courseIds : current.enrollment.courseIds;
+    // 아임웹 필드명(snake_case)과 레거시 필드명(camelCase) 모두 지원
+    const buyerEmail = String(
+      body.email || body.buyer_email || body.buyerEmail || ""
+    ).trim().toLowerCase();
+    const buyerName = String(
+      body.name || body.buyer_name || body.buyerName || ""
+    ).trim();
+    const orderNo = String(
+      body.order_no || body.orderNo || ""
+    ).trim();
+    // 상품 코드 → courseId 매핑
+    const productCodes = (body.products || body.items || [])
+      .map((p) => String(p.code || p.prod_code || p.product_code || "").trim())
+      .filter(Boolean);
+    const mappedCourseIds = productCodes.length
+      ? courses.filter((c) => productCodes.includes(c.productId)).map((c) => c.id)
+      : null;
 
-      current.enrollment.orderNo = String(body.orderNo || current.enrollment.orderNo).trim();
+    const db = await updateDb((current) => {
+      if (!buyerEmail) throw httpError(400, "구매자 이메일이 없습니다.");
+      current.enrollment.orderNo = orderNo || current.enrollment.orderNo;
       current.enrollment.buyerEmail = buyerEmail;
-      current.enrollment.buyerName = buyerName;
-      current.enrollment.courseIds = courseIds;
+      current.enrollment.buyerName = buyerName || current.enrollment.buyerName;
+      current.enrollment.courseIds = mappedCourseIds || current.enrollment.courseIds;
       current.enrollment.emailVerified = true;
       current.enrollment.contractSigned = false;
       current.enrollment.status = "pending_contract";
-      current.user.name = buyerName;
+      current.user.name = buyerName || current.user.name;
       current.user.email = buyerEmail;
       current.drm.activeSession = null;
 
@@ -640,9 +662,13 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/imweb/webhooks/refund") {
+    if (IMWEB_WEBHOOK_SECRET && url.searchParams.get("secret") !== IMWEB_WEBHOOK_SECRET) {
+      sendError(res, 401, "웹훅 시크릿이 올바르지 않습니다.");
+      return;
+    }
     const body = await readJson(req);
+    const orderNo = String(body.order_no || body.orderNo || "").trim();
     const db = await updateDb((current) => {
-      const orderNo = String(body.orderNo || "").trim();
       if (orderNo && orderNo !== current.enrollment.orderNo) throw httpError(404, "환불 처리할 주문번호를 찾을 수 없습니다.");
       current.enrollment.status = "refunded";
       current.enrollment.contractSigned = false;
