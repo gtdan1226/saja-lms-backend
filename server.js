@@ -1,11 +1,18 @@
 const http = require("http");
 const fs = require("fs");
-const fsp = require("fs/promises");
 const path = require("path");
 const { createHash, randomUUID } = require("crypto");
 const { S3Client, ListObjectsV2Command, HeadObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { createClient } = require("@supabase/supabase-js");
+
+// Supabase
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+  : null;
 
 const rootDir = __dirname;
 const dataDir = path.join(rootDir, "data");
@@ -242,22 +249,45 @@ function defaultDb() {
   };
 }
 
-async function ensureDb() {
-  await fsp.mkdir(dataDir, { recursive: true });
-  if (!fs.existsSync(dbPath)) {
-    await writeDb(defaultDb());
-  }
-}
-
 async function readDb() {
-  await ensureDb();
-  const raw = await fsp.readFile(dbPath, "utf8");
-  return JSON.parse(raw);
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("lms_state")
+      .select("data")
+      .eq("id", "main")
+      .maybeSingle();
+    if (!error && data) return data.data;
+    if (!error && !data) {
+      const fresh = defaultDb();
+      await writeDb(fresh);
+      return fresh;
+    }
+    throw new Error(`DB read failed: ${error.message}`);
+  }
+  // 파일 폴백 (로컬 개발용)
+  const dataDir = path.join(rootDir, "data");
+  const dbPath = path.join(dataDir, "db.json");
+  if (!fs.existsSync(dbPath)) {
+    const fresh = defaultDb();
+    await writeDb(fresh);
+    return fresh;
+  }
+  return JSON.parse(fs.readFileSync(dbPath, "utf8"));
 }
 
 async function writeDb(db) {
-  await fsp.mkdir(dataDir, { recursive: true });
-  await fsp.writeFile(dbPath, `${JSON.stringify(db, null, 2)}\n`, "utf8");
+  if (supabase) {
+    const { error } = await supabase
+      .from("lms_state")
+      .upsert({ id: "main", data: db, updated_at: new Date().toISOString() });
+    if (error) throw new Error(`DB write failed: ${error.message}`);
+    return;
+  }
+  // 파일 폴백 (로컬 개발용)
+  const dataDir = path.join(rootDir, "data");
+  const dbPath = path.join(dataDir, "db.json");
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(dbPath, `${JSON.stringify(db, null, 2)}\n`, "utf8");
 }
 
 async function updateDb(mutator) {
@@ -307,7 +337,7 @@ async function readJson(req) {
 
 async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/health") {
-    sendJson(res, 200, { ok: true, mode: "local-pre-api", dbPath, appUrl, apiUrl });
+    sendJson(res, 200, { ok: true, mode: supabase ? "supabase" : "local-file", supabaseConnected: !!supabase, appUrl, apiUrl });
     return;
   }
 
@@ -724,6 +754,7 @@ function toClientState(db) {
       r2Connected: !!r2,
       r2Bucket: R2_BUCKET,
       missingExternalConnections: [
+        ...(supabase ? [] : ["Supabase DB (환경변수 미설정)"]),
         ...(r2 ? [] : ["Cloudflare R2 (환경변수 미설정)"]),
         "아임웹 주문 웹훅",
         "메일 발송 API",
@@ -860,13 +891,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDb()
-  .then(() => {
-    server.listen(port, bindHost, () => {
-      console.log(`카니발 라이언 LMS server: ${apiUrl}/`);
-    });
-  })
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+server.listen(port, bindHost, () => {
+  console.log(`카니발 라이언 LMS server: ${apiUrl}/`);
+  console.log(`DB: ${supabase ? "Supabase" : "로컬 파일"}`);
+});
