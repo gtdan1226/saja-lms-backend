@@ -6,6 +6,7 @@ const { S3Client, ListObjectsV2Command, HeadObjectCommand } = require("@aws-sdk/
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { createClient } = require("@supabase/supabase-js");
+const nodemailer = require("nodemailer");
 
 // Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -13,6 +14,48 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // 아임웹 웹훅 시크릿 (쿼리파라미터 ?secret=xxx 검증)
 const IMWEB_WEBHOOK_SECRET = process.env.IMWEB_WEBHOOK_SECRET || "";
+
+// Gmail OAuth2
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
+const GMAIL_FROM = process.env.GMAIL_FROM || "";
+
+const mailer = GMAIL_CLIENT_ID && GMAIL_REFRESH_TOKEN
+  ? nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        type: "OAuth2",
+        user: GMAIL_FROM,
+        clientId: GMAIL_CLIENT_ID,
+        clientSecret: GMAIL_CLIENT_SECRET,
+        refreshToken: GMAIL_REFRESH_TOKEN,
+      },
+    })
+  : null;
+
+async function sendInviteMail(to, inviteUrl) {
+  if (!mailer) return { skipped: true, reason: "Gmail 미설정" };
+  await mailer.sendMail({
+    from: `카니발 라이언 LMS <${GMAIL_FROM}>`,
+    to,
+    subject: "[카니발 라이언 LMS] 강의실 초대 링크",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+        <h2 style="color:#1a1a1a">강의실 초대 링크</h2>
+        <p>결제해 주셔서 감사합니다. 아래 링크를 클릭하면 강의실에 입장할 수 있습니다.</p>
+        <p style="margin:24px 0">
+          <a href="${inviteUrl}"
+             style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+            강의실 입장하기
+          </a>
+        </p>
+        <p style="color:#6b7280;font-size:13px">링크는 72시간 후 만료됩니다.</p>
+      </div>
+    `,
+  });
+  return { sent: true, to };
+}
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
   : null;
@@ -403,6 +446,12 @@ async function handleApi(req, res, url) {
       current.invitations.unshift(invite.publicRecord);
       current.mailOutbox.unshift(invite.mailRecord);
     });
+    const latestInvite = db.invitations[0];
+    if (latestInvite) {
+      sendInviteMail(latestInvite.email, latestInvite.localInviteUrl).catch((err) => {
+        console.error("초대 메일 재발송 실패:", err.message);
+      });
+    }
     sendJson(res, 200, toClientState(db));
     return;
   }
@@ -657,6 +706,13 @@ async function handleApi(req, res, url) {
       current.mailOutbox.unshift(invite.mailRecord);
       addLicenseLog(current, "imweb_order_paid", "allowed", `${current.enrollment.orderNo} 주문으로 수강권 대기 상태를 만들었습니다.`);
     });
+    // 초대 메일 비동기 발송 (실패해도 200 응답)
+    const latestInvite = db.invitations[0];
+    if (latestInvite) {
+      sendInviteMail(latestInvite.email, latestInvite.localInviteUrl).catch((err) => {
+        console.error("초대 메일 발송 실패:", err.message);
+      });
+    }
     sendJson(res, 200, toClientState(db));
     return;
   }
