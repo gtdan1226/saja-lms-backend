@@ -1547,6 +1547,36 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  // ── Admin: update chapter (assignment, duration) ──
+  if (req.method === "PATCH" && /^\/api\/admin\/courses\/[^/]+\/chapters\/[^/]+$/.test(url.pathname)) {
+    const parts = url.pathname.split("/");
+    const courseId = parts[4];
+    const chapterId = parts[6];
+    const body = await readJson(req);
+    const db = await updateDb((current) => {
+      requireAdmin(req, current);
+      const course = current.courses.find((c) => c.id === courseId);
+      if (!course) throw httpError(404, "강의를 찾을 수 없습니다.");
+      const ch = course.chapters.find((c) => c.id === chapterId);
+      if (!ch) throw httpError(404, "챕터를 찾을 수 없습니다.");
+      if (body.assignment !== undefined) ch.assignment = String(body.assignment || "").trim();
+      if (body.duration !== undefined) ch.duration = String(body.duration || "").trim();
+    });
+    ok(toAdminState(db));
+    return;
+  }
+
+  // ── Admin: get board posts for a course ──
+  if (req.method === "GET" && /^\/api\/admin\/board\/[^/]+$/.test(url.pathname)) {
+    try {
+      requireAdmin(req, db);
+      const courseId = url.pathname.split("/")[4];
+      const posts = (db.board[courseId] || []).slice(0, 500);
+      ok({ posts });
+    } catch (e) { fail(e.status || 500, e.message); }
+    return;
+  }
+
   // ── Admin: update student course enrollment ──
   if (req.method === "POST" && /^\/api\/admin\/students\/[^/]+\/courses$/.test(url.pathname)) {
     const userId = url.pathname.split("/")[4];
@@ -1754,6 +1784,47 @@ async function handleApi(req, res, url) {
         if (!current.board[courseId]) return;
         const idx = current.board[courseId].findIndex((p) => p.id === postId);
         if (idx >= 0) current.board[courseId].splice(idx, 1);
+      });
+      ok({ ok: true });
+    } catch (e) { fail(e.status || 500, e.message); }
+    return;
+  }
+
+  // ── Admin: add comment to board post ──
+  if (req.method === "POST" && /^\/api\/admin\/board\/[^/]+\/posts\/[^/]+\/comments$/.test(url.pathname)) {
+    try {
+      requireAdmin(req, db);
+      const parts = url.pathname.split("/");
+      const courseId = parts[4]; const postId = parts[6];
+      const body = await readJson(req);
+      const content = String(body.content || "").trim().slice(0, 2000);
+      if (!content) { fail(400, "내용을 입력해 주세요."); return; }
+      await updateDb((current) => {
+        const posts = current.board[courseId] || [];
+        const post = posts.find((p) => p.id === postId);
+        if (!post) throw httpError(404, "게시글을 찾을 수 없습니다.");
+        if (!post.comments) post.comments = [];
+        post.comments.push({
+          id: `cmt_${randomUUID()}`,
+          userId: "admin", nickname: "관리자",
+          content, createdAt: new Date().toISOString(),
+        });
+      });
+      ok({ ok: true });
+    } catch (e) { fail(e.status || 500, e.message); }
+    return;
+  }
+
+  // ── Admin: delete board comment ──
+  if (req.method === "DELETE" && /^\/api\/admin\/board\/[^/]+\/posts\/[^/]+\/comments\/[^/]+$/.test(url.pathname)) {
+    try {
+      requireAdmin(req, db);
+      const parts = url.pathname.split("/");
+      const courseId = parts[4]; const postId = parts[6]; const commentId = parts[8];
+      await updateDb((current) => {
+        const posts = current.board[courseId] || [];
+        const post = posts.find((p) => p.id === postId);
+        if (post) post.comments = (post.comments || []).filter((c) => c.id !== commentId);
       });
       ok({ ok: true });
     } catch (e) { fail(e.status || 500, e.message); }

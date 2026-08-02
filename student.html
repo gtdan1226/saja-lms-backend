@@ -72,14 +72,8 @@
       <h1 class="workspace-title" id="courseTitle">강의</h1>
     </header>
 
-    <!-- 강의 탭 -->
-    <div id="courseTabs" style="display:none;border-bottom:1px solid var(--border);padding:0 24px;background:var(--card)">
-      <div style="display:flex">
-        <button id="tabContent" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid var(--teal);font-size:14px;font-weight:600;color:var(--teal);cursor:pointer">강의</button>
-        <button id="tabBoard" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:400;color:var(--muted);cursor:pointer">게시판</button>
-        <button id="tabQa" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:400;color:var(--muted);cursor:pointer">1:1 질문</button>
-      </div>
-    </div>
+    <!-- 강의 탭 (숨김 - 인라인 레이아웃으로 대체) -->
+    <div id="courseTabs" style="display:none"></div>
 
     <!-- 비디오 섹션 -->
     <section class="video-section" id="videoSection" style="display:none">
@@ -113,23 +107,32 @@
       <ul class="chapter-list" id="chapterList"></ul>
     </section>
 
-    <!-- 과제 제출 -->
-    <section class="submit-section" id="submitSection" style="display:none">
-      <h2 class="section-title">과제 제출 <span class="pill" id="activeCourseForSubmit"></span></h2>
-      <div class="submission-form-wrap">
-        <select id="submitChapterSel" class="submit-select"></select>
-        <textarea id="submitText" class="submit-textarea" rows="4" placeholder="과제 내용 또는 작업 링크를 입력해 주세요."></textarea>
-        <input type="text" id="submitFileName" class="submit-input" placeholder="파일명 (선택)" maxlength="100">
-        <button id="submitBtn" class="primary-action">과제 제출</button>
-        <p id="submitStatus" class="submit-status"></p>
-      </div>
-    </section>
+    <!-- 과제 제출 + 1:1 문의 (나란히) -->
+    <div id="submitQaRow" style="display:none;gap:20px;padding:0 24px 0;align-items:flex-start">
+      <!-- 과제 제출 -->
+      <section class="submit-section" id="submitSection" style="flex:1;min-width:0;padding:0">
+        <h2 class="section-title">과제 제출 <span class="pill" id="activeCourseForSubmit"></span></h2>
+        <div id="assignmentDesc" style="display:none;margin-bottom:12px;padding:12px 14px;background:var(--bg);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;font-size:13px;line-height:1.7;color:var(--text)"></div>
+        <div class="submission-form-wrap">
+          <select id="submitChapterSel" class="submit-select"></select>
+          <textarea id="submitText" class="submit-textarea" rows="4" placeholder="과제 내용 또는 작업 링크를 입력해 주세요."></textarea>
+          <input type="text" id="submitFileName" class="submit-input" placeholder="파일명 (선택)" maxlength="100">
+          <button id="submitBtn" class="primary-action">과제 제출</button>
+          <p id="submitStatus" class="submit-status"></p>
+        </div>
+      </section>
+      <!-- 1:1 질문 -->
+      <section id="qaSection" style="flex:1;min-width:0"></section>
+    </div>
 
     <!-- 제출 내역 -->
     <section class="submissions-section" id="submissionsSection" style="display:none">
       <h2 class="section-title">제출 내역</h2>
       <ul class="submissions-list" id="submissionsList"></ul>
     </section>
+
+    <!-- 게시판 (인라인) -->
+    <section id="boardSection" style="display:none"></section>
 
     <!-- 강의실 없음 -->
     <div id="emptyState" style="display:none;padding:60px 24px;text-align:center;color:var(--muted)">
@@ -142,12 +145,6 @@
       <h2 style="font-size:18px;font-weight:700;margin-bottom:24px">마이페이지</h2>
       <div id="mypageContent"></div>
     </section>
-
-    <!-- 게시판 -->
-    <section id="boardSection" style="display:none"></section>
-
-    <!-- 1:1 질문 -->
-    <section id="qaSection" style="display:none"></section>
 
   </main>
 </div>

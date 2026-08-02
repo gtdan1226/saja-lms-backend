@@ -61,6 +61,7 @@ function renderCurrentTab() {
   else if (activeTab === "imweb") renderImweb();
   else if (activeTab === "log") renderDrmLog();
   else if (activeTab === "questions") renderQuestions();
+  else if (activeTab === "board") renderAdminBoard();
 }
 
 // ── Students ────────────────────────────────────────────────
@@ -450,6 +451,11 @@ function populateCourseSelects() {
   const r2CourseSelect = document.getElementById("r2CourseId");
   r2CourseSelect.innerHTML = courses.map((c) => `<option value="${c.id}">${c.room} · ${c.title}</option>`).join("");
   r2CourseSelect.dispatchEvent(new Event("change"));
+
+  const boardCourseSelect = document.getElementById("boardCourseSelect");
+  if (boardCourseSelect) {
+    boardCourseSelect.innerHTML = courses.map((c) => `<option value="${c.id}">${c.room} · ${c.title}</option>`).join("");
+  }
 }
 
 document.getElementById("r2CourseId").addEventListener("change", () => {
@@ -534,7 +540,7 @@ document.querySelectorAll(".admin-tab").forEach((btn) => {
     document.querySelectorAll(".admin-tab-content").forEach((s) => s.classList.add("is-hidden"));
     btn.classList.add("is-active");
     activeTab = btn.dataset.tab;
-    const tabMap = { students: "tabStudents", submissions: "tabSubmissions", invite: "tabInvite", r2: "tabR2", courses: "tabCourses", imweb: "tabImweb", log: "tabLog", questions: "tabQuestions" };
+    const tabMap = { students: "tabStudents", submissions: "tabSubmissions", invite: "tabInvite", r2: "tabR2", courses: "tabCourses", imweb: "tabImweb", log: "tabLog", questions: "tabQuestions", board: "tabBoard" };
     document.getElementById(tabMap[activeTab])?.classList.remove("is-hidden");
     renderCurrentTab();
   });
@@ -583,11 +589,17 @@ function renderCourses() {
 
       <div class="chapter-list" id="chapterList_${c.id}">
         ${(c.chapters || []).map((ch) => `
-          <div class="chapter-row">
+          <div class="chapter-row" style="flex-wrap:wrap;gap:6px">
             <span class="chapter-label">${ch.label}</span>
-            <span>${escHtml(ch.title)}</span>
+            <span style="flex:1">${escHtml(ch.title)}</span>
             ${ch.duration ? `<span class="muted-text">${ch.duration}</span>` : ""}
-            <button class="ghost-action micro danger" style="margin-left:auto" onclick="deleteChapter('${c.id}','${ch.id}','${escHtml(ch.title)}')">삭제</button>
+            <button class="ghost-action micro danger" onclick="deleteChapter('${c.id}','${ch.id}','${escHtml(ch.title)}')">삭제</button>
+            <div style="width:100%;display:flex;gap:6px;align-items:flex-start;margin-top:4px">
+              <textarea id="assign_${ch.id}" rows="2" placeholder="과제 내용 입력 (없으면 비워두세요)"
+                style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;
+                       background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;outline:none">${escHtml(ch.assignment || "")}</textarea>
+              <button class="ghost-action micro" onclick="updateChapterAssignment('${c.id}','${ch.id}')">저장</button>
+            </div>
           </div>`).join("") || "<p class='empty-hint' style='padding:8px 0'>챕터 없음</p>"}
       </div>
       <div class="add-chapter-row">
@@ -597,6 +609,109 @@ function renderCourses() {
       </div>
     </div>`;
   }).join("");
+}
+
+async function updateChapterAssignment(courseId, chapterId) {
+  const el = document.getElementById(`assign_${chapterId}`);
+  const assignment = el?.value || "";
+  const res = await apiFetch(`/api/admin/courses/${courseId}/chapters/${chapterId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assignment }),
+  });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "저장 실패"); return; }
+  state = await res.json();
+  alert("과제 내용이 저장되었습니다.");
+}
+
+// ── Admin Board ───────────────────────────────────────────────
+async function renderAdminBoard() {
+  const sel = document.getElementById("boardCourseSelect");
+  if (!sel) return;
+  if (!sel._listenerAdded) {
+    sel.addEventListener("change", () => loadAdminBoard(sel.value));
+    sel._listenerAdded = true;
+  }
+  if (sel.value) loadAdminBoard(sel.value);
+}
+
+async function loadAdminBoard(courseId) {
+  const container = document.getElementById("adminBoardContent");
+  container.innerHTML = `<p class="empty-hint">불러오는 중...</p>`;
+  try {
+    const res = await apiFetch(`/api/admin/board/${courseId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "로드 실패");
+    const posts = data.posts || [];
+    if (!posts.length) { container.innerHTML = `<p class="empty-hint">게시글이 없습니다.</p>`; return; }
+    container.innerHTML = posts.map((post) => {
+      const cmts = post.comments || [];
+      const cmtsHtml = cmts.map((c) => `
+        <div style="padding:8px 12px;border-left:2px solid var(--border);margin-left:12px;margin-top:6px;font-size:13px">
+          <strong>${escHtml(c.nickname)}</strong>
+          <span style="font-size:11px;color:var(--muted);margin-left:6px">${fmtDate(c.createdAt)}</span>
+          <p style="margin-top:3px;white-space:pre-wrap;word-break:break-word">${escHtml(c.content)}</p>
+          <button class="ghost-action micro danger" style="margin-top:4px;font-size:11px"
+            onclick="adminDeleteComment('${courseId}','${post.id}','${c.id}')">댓글 삭제</button>
+        </div>`).join("");
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <strong>${escHtml(post.nickname)}</strong>
+            <span style="font-size:12px;color:var(--muted);margin-left:8px">${fmtDate(post.createdAt)}</span>
+          </div>
+          <button class="ghost-action micro danger" onclick="adminDeletePost('${courseId}','${post.id}')">삭제</button>
+        </div>
+        <p style="font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word">${escHtml(post.content)}</p>
+        ${cmtsHtml}
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input type="text" id="adminCmt_${post.id}" placeholder="관리자 댓글..."
+            style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);outline:none">
+          <button class="ghost-action micro" onclick="adminAddComment('${courseId}','${post.id}')">등록</button>
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    container.innerHTML = `<p style="color:#e53e3e;font-size:13px">${e.message}</p>`;
+  }
+}
+
+async function adminDeletePost(courseId, postId) {
+  if (!confirm("게시글을 삭제하시겠습니까?")) return;
+  const res = await apiFetch(`/api/admin/board/${courseId}/posts/${postId}`, { method: "DELETE" });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "삭제 실패"); return; }
+  state = await res.json();
+  loadAdminBoard(courseId);
+}
+
+async function adminDeleteComment(courseId, postId, commentId) {
+  if (!confirm("댓글을 삭제하시겠습니까?")) return;
+  const res = await apiFetch(`/api/admin/board/${courseId}/posts/${postId}/comments/${commentId}`, { method: "DELETE" });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "삭제 실패"); return; }
+  loadAdminBoard(courseId);
+}
+
+async function adminAddComment(courseId, postId) {
+  const input = document.getElementById(`adminCmt_${postId}`);
+  const content = (input?.value || "").trim();
+  if (!content) return;
+  const res = await apiFetch(`/api/admin/board/${courseId}/posts/${postId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "등록 실패"); return; }
+  loadAdminBoard(courseId);
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return "방금";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+  return new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
 async function saveImwebMapping(courseId) {
@@ -1038,5 +1153,9 @@ window.answerQuestion = answerQuestion;
 window.deleteR2Video = deleteR2Video;
 window.previewR2Video = previewR2Video;
 window.closeVideoPreview = closeVideoPreview;
+window.updateChapterAssignment = updateChapterAssignment;
+window.adminDeletePost = adminDeletePost;
+window.adminDeleteComment = adminDeleteComment;
+window.adminAddComment = adminAddComment;
 
 boot();

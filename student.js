@@ -79,14 +79,14 @@ function render() {
   renderCourseNav();
   const gated = renderGate();
   if (gated) {
-    ["workspaceHeader","courseTabs","videoSection","chapterSection","submitSection",
-     "submissionsSection","boardSection","qaSection","mypageSection","emptyState"]
+    ["workspaceHeader","courseTabs","videoSection","chapterSection","submitQaRow",
+     "submissionsSection","boardSection","mypageSection","emptyState"]
       .forEach((id) => { document.getElementById(id).style.display = "none"; });
     return;
   }
   if (activeCourseId) renderCourse(activeCourseId);
   else if (state.courses?.length) selectCourse(state.courses[0].id);
-  else document.getElementById("emptyState").style.display = "";
+  else { document.getElementById("emptyState").style.display = ""; }
 }
 
 function renderUser() {
@@ -143,10 +143,7 @@ function showGate(title, desc, btnLabel) {
 
 function selectCourse(courseId) {
   activeCourseId = courseId;
-  activeCourseTab = "content";
   document.getElementById("mypageSection").style.display = "none";
-  document.getElementById("boardSection").style.display = "none";
-  document.getElementById("qaSection").style.display = "none";
   renderCourseNav();
   renderCourse(courseId);
 }
@@ -158,39 +155,15 @@ function renderCourse(courseId) {
   document.getElementById("roomPill").textContent = course.room;
   document.getElementById("courseSubtitle").textContent = course.subtitle || "";
   document.getElementById("courseTitle").textContent = course.title;
+  document.getElementById("courseTabs").style.display = "none";
+  document.getElementById("emptyState").style.display = "none";
 
-  // 탭 스트립 표시 + 활성 탭 스타일
-  const tabs = document.getElementById("courseTabs");
-  tabs.style.display = "";
-  ["tabContent","tabBoard","tabQa"].forEach((id) => {
-    const el = document.getElementById(id);
-    const active = id === { content:"tabContent", board:"tabBoard", qa:"tabQa" }[activeCourseTab];
-    el.style.borderBottom = active ? "2px solid var(--teal)" : "2px solid transparent";
-    el.style.color = active ? "var(--teal)" : "var(--muted)";
-    el.style.fontWeight = active ? "600" : "400";
-  });
-
-  const hideContent = () => {
-    ["videoSection","chapterSection","submitSection","submissionsSection","emptyState"]
-      .forEach((id) => { document.getElementById(id).style.display = "none"; });
-  };
-
-  if (activeCourseTab === "content") {
-    document.getElementById("boardSection").style.display = "none";
-    document.getElementById("qaSection").style.display = "none";
-    renderVideoSection(course);
-    renderChapters(course);
-    renderSubmitSection(course);
-    renderSubmissions();
-  } else if (activeCourseTab === "board") {
-    hideContent();
-    document.getElementById("qaSection").style.display = "none";
-    renderBoard(courseId);
-  } else if (activeCourseTab === "qa") {
-    hideContent();
-    document.getElementById("boardSection").style.display = "none";
-    renderQa(courseId);
-  }
+  renderVideoSection(course);
+  renderChapters(course);
+  renderSubmitSection(course);
+  renderSubmissions();
+  renderQaInline(courseId);
+  renderBoard(courseId);
 }
 
 function renderVideoSection(course) {
@@ -211,7 +184,6 @@ function renderVideoSection(course) {
     document.getElementById("drmBar").style.display = "";
     const ch = course.chapters.find((c) => c.id === activeSession.chapterId);
     document.getElementById("drmLabel").textContent = `${activeSession.chapterLabel} · ${ch?.title || ""} 재생 중`;
-    // presigned R2 URL을 video 태그에 연결
     const manifestUrl = activeSession.manifestUrl;
     if (manifestUrl && video.dataset.loadedUrl !== manifestUrl) {
       video.src = manifestUrl;
@@ -227,7 +199,6 @@ function renderVideoSection(course) {
     }
     startWatermark();
   } else {
-    // 세션 없음 — 플레이스홀더 표시, 비디오 숨김
     video.pause();
     video.style.display = "none";
     video.src = "";
@@ -240,10 +211,10 @@ function renderVideoSection(course) {
     stopWatermark();
   }
   document.getElementById("playBtn").disabled = !unlocked || !activeChapterId;
-  document.getElementById("emptyState").style.display = "none";
   document.getElementById("chapterSection").style.display = "";
-  document.getElementById("submitSection").style.display = "";
+  document.getElementById("submitQaRow").style.display = "flex";
   document.getElementById("submissionsSection").style.display = "";
+  document.getElementById("boardSection").style.display = "";
 }
 
 function renderChapters(course) {
@@ -268,6 +239,8 @@ function renderChapters(course) {
   list.querySelectorAll(".chapter-item").forEach((li) => {
     li.addEventListener("click", () => {
       activeChapterId = li.dataset.chid;
+      const sel = document.getElementById("submitChapterSel");
+      if (sel) sel.value = li.dataset.chid;
       renderCourse(activeCourseId);
     });
   });
@@ -277,7 +250,24 @@ function renderSubmitSection(course) {
   document.getElementById("activeCourseForSubmit").textContent = course.room;
   const sel = document.getElementById("submitChapterSel");
   sel.innerHTML = course.chapters.map((ch) => `<option value="${ch.id}">${ch.label} · ${ch.title}</option>`).join("");
+  if (activeChapterId) sel.value = activeChapterId;
+  updateAssignmentDesc(course, sel.value);
 }
+
+function updateAssignmentDesc(course, chapterId) {
+  const el = document.getElementById("assignmentDesc");
+  if (!el) return;
+  const ch = (course?.chapters || []).find((c) => c.id === chapterId);
+  const text = ch?.assignment || "";
+  el.style.display = text ? "" : "none";
+  el.textContent = text;
+}
+
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "submitChapterSel") return;
+  const course = (state?.courses || []).find((c) => c.id === activeCourseId);
+  if (course) updateAssignmentDesc(course, e.target.value);
+});
 
 function renderSubmissions() {
   const list = document.getElementById("submissionsList");
@@ -318,15 +308,15 @@ function showError(msg) {
 
 // ── Watermark ───────────────────────────────────────────────
 function startWatermark() {
+  clearInterval(wmTimer);
   const wm = document.getElementById("watermark");
   const u = state?.user;
   const activeSession = state?.drm?.activeSession;
   if (!u) return;
   const subject = activeSession?.watermarkSubject || "";
-  const parts = subject ? subject.split("|") : [u.name || "", u.memberId || "", ""];
+  const parts = subject ? subject.split("|") : [u.name || "", u.email || "", ""];
   wm.innerHTML = parts.map((p) => `<span style="display:block">${p}</span>`).join("");
   wm.style.display = "";
-  stopWatermark();
   function reposition() {
     const p = document.getElementById("videoFrame");
     if (!p) return;
@@ -341,8 +331,8 @@ function startWatermark() {
 
 function stopWatermark() {
   clearInterval(wmTimer);
-  const wm = document.getElementById("watermark");
-  wm.style.display = "none";
+  wmTimer = null;
+  document.getElementById("watermark").style.display = "none";
 }
 
 // ── Events ──────────────────────────────────────────────────
@@ -359,8 +349,8 @@ document.getElementById("mypageBtn").addEventListener("click", () => {
 
 // ── Mypage ──────────────────────────────────────────────────
 function showMypage() {
-  ["workspaceHeader","courseTabs","videoSection","chapterSection","submitSection",
-   "submissionsSection","emptyState","boardSection","qaSection"]
+  ["workspaceHeader","courseTabs","videoSection","chapterSection","submitQaRow",
+   "submissionsSection","emptyState","boardSection"]
     .forEach((id) => { document.getElementById(id).style.display = "none"; });
   document.getElementById("mypageSection").style.display = "block";
   activeCourseId = null;
@@ -603,22 +593,13 @@ document.getElementById("contractSign").addEventListener("click", async () => {
   render();
 });
 
-// ── Tab listeners ───────────────────────────────────────────
-document.getElementById("tabContent").addEventListener("click", () => {
-  if (activeCourseTab === "content" || !activeCourseId) return;
-  activeCourseTab = "content";
-  renderCourse(activeCourseId);
-});
-document.getElementById("tabBoard").addEventListener("click", () => {
-  if (activeCourseTab === "board" || !activeCourseId) return;
-  activeCourseTab = "board";
-  renderCourse(activeCourseId);
-});
-document.getElementById("tabQa").addEventListener("click", () => {
-  if (activeCourseTab === "qa" || !activeCourseId) return;
-  activeCourseTab = "qa";
-  renderCourse(activeCourseId);
-});
+// ── 1:1 Q&A 인라인 ──────────────────────────────────────────
+function renderQaInline(courseId) {
+  const section = document.getElementById("qaSection");
+  section.style.display = "block";
+  const myQs = (state.questions || []).filter((q) => q.courseId === courseId);
+  section.innerHTML = renderQaHtml(courseId, myQs);
+}
 
 // ── Board ───────────────────────────────────────────────────
 function fmtDate(iso) {
