@@ -869,7 +869,7 @@ async function handleApi(req, res, url) {
         tokenHash: sha256hex(token), tokenPreview: `${token.slice(0, 12)}...${token.slice(-6)}`,
         issuedAt: formatNow(), expiresAt, deviceId: userDevices[0]?.id, deviceLabel: userDevices[0]?.label,
         keySystems: course.videoAsset.keySystems,
-        watermarkSubject: `${user.name}|${user.memberId}|${clientIp}`,
+        watermarkSubject: `${user.name}|${user.email}|${clientIp}`,
       };
       const key = `${user.id}:${course.id}:${chapter.id}`;
       current.progress[key] = Math.max(current.progress[key] || 0, 45);
