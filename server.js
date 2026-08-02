@@ -4,7 +4,7 @@ const path = require("path");
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 const { createHash, randomUUID, randomBytes, pbkdf2Sync } = require("crypto");
-const { S3Client, ListObjectsV2Command, HeadObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, ListObjectsV2Command, HeadObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { createClient } = require("@supabase/supabase-js");
@@ -1232,6 +1232,36 @@ async function handleApi(req, res, url) {
     if (!body.courseId || !body.chapterId) { fail(400, "courseId와 chapterId가 필요합니다."); return; }
     const result = await generateR2UploadUrl(body.courseId, body.chapterId, body.contentType);
     ok(result);
+    return;
+  }
+
+  // ── Admin: R2 delete video ──
+  if (req.method === "DELETE" && url.pathname === "/api/admin/r2/videos") {
+    const db = await readDb();
+    try { requireAdmin(req, db); } catch (e) { fail(e.status, e.message); return; }
+    if (!r2) { fail(503, "R2 미연결"); return; }
+    const body = await readJson(req);
+    const key = String(body.key || "").trim();
+    if (!key || !key.startsWith("videos/")) { fail(400, "유효하지 않은 키입니다."); return; }
+    try {
+      await r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+      ok({ ok: true, deleted: key });
+    } catch (e) { fail(500, e.message); }
+    return;
+  }
+
+  // ── Admin: R2 preview URL ──
+  if (req.method === "POST" && url.pathname === "/api/admin/r2/preview-url") {
+    const db = await readDb();
+    try { requireAdmin(req, db); } catch (e) { fail(e.status, e.message); return; }
+    if (!r2) { fail(503, "R2 미연결"); return; }
+    const body = await readJson(req);
+    const key = String(body.key || "").trim();
+    if (!key || !key.startsWith("videos/")) { fail(400, "유효하지 않은 키입니다."); return; }
+    try {
+      const previewUrl = await getSignedUrl(r2, new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }), { expiresIn: 300 });
+      ok({ previewUrl });
+    } catch (e) { fail(500, e.message); }
     return;
   }
 

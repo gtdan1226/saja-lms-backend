@@ -377,13 +377,65 @@ async function loadR2Files() {
     if (!d.files?.length) { list.innerHTML = "<li class='empty-hint'>업로드된 영상이 없습니다.</li>"; return; }
     list.innerHTML = d.files.map((f) => {
       const sizeMB = (f.size / (1024 * 1024)).toFixed(1);
-      return `<li class="r2-file-item">
-        <span class="r2-key">${f.key}</span>
-        <span class="muted-text">${sizeMB} MB</span>
-        <span class="muted-text">${new Date(f.lastModified).toLocaleDateString("ko-KR")}</span>
+      const keyEsc = escHtml(f.key);
+      const keySafe = f.key.replace(/'/g, "\\'");
+      return `<li class="r2-file-item" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span class="r2-key" style="flex:1;min-width:0;font-size:13px;word-break:break-all">${keyEsc}</span>
+        <span class="muted-text" style="white-space:nowrap">${sizeMB} MB</span>
+        <span class="muted-text" style="white-space:nowrap">${new Date(f.lastModified).toLocaleDateString("ko-KR")}</span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="previewR2Video('${keySafe}')"
+            style="font-size:12px;padding:4px 10px;border:1px solid var(--teal);border-radius:6px;background:transparent;color:var(--teal);cursor:pointer">미리보기</button>
+          <button onclick="deleteR2Video('${keySafe}')"
+            style="font-size:12px;padding:4px 10px;border:1px solid #e53e3e;border-radius:6px;background:transparent;color:#e53e3e;cursor:pointer">삭제</button>
+        </div>
       </li>`;
     }).join("");
   } catch { list.innerHTML = "<li class='empty-hint'>목록 로드 실패</li>"; }
+}
+
+async function deleteR2Video(key) {
+  if (!confirm(`"${key}" 영상을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+  const res = await apiFetch("/api/admin/r2/videos", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "삭제 실패"); return; }
+  loadR2Files();
+  renderR2();
+}
+
+async function previewR2Video(key) {
+  const modal = document.getElementById("videoPreviewModal");
+  const video = document.getElementById("previewVideo");
+  const status = document.getElementById("previewModalStatus");
+  const title = document.getElementById("previewModalTitle");
+  title.textContent = key;
+  video.src = "";
+  status.textContent = "미리보기 URL 생성 중...";
+  modal.showModal();
+  try {
+    const res = await apiFetch("/api/admin/r2/preview-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+    const d = await res.json();
+    if (!res.ok) { status.textContent = d.error || "URL 생성 실패"; return; }
+    video.src = d.previewUrl;
+    status.textContent = "미리보기 URL은 5분 후 만료됩니다.";
+  } catch (e) {
+    status.textContent = "미리보기 로드 실패: " + e.message;
+  }
+}
+
+function closeVideoPreview() {
+  const modal = document.getElementById("videoPreviewModal");
+  const video = document.getElementById("previewVideo");
+  video.pause();
+  video.src = "";
+  modal.close();
 }
 
 function populateCourseSelects() {
@@ -983,5 +1035,8 @@ window.loadImwebMembers = loadImwebMembers;
 window.regenInviteLink = regenInviteLink;
 window.openOrderInvite = openOrderInvite;
 window.answerQuestion = answerQuestion;
+window.deleteR2Video = deleteR2Video;
+window.previewR2Video = previewR2Video;
+window.closeVideoPreview = closeVideoPreview;
 
 boot();
