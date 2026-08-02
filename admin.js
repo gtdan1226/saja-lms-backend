@@ -580,11 +580,17 @@ function renderCourses() {
   list.innerHTML = courses.map((c) => {
     return `
     <div class="course-card" data-cid="${c.id}">
-      <div class="course-card-header">
-        <span class="course-room-badge">${escHtml(c.room)}</span>
-        <strong>${escHtml(c.title)}</strong>
-        ${c.subtitle ? `<span class="muted-text">${escHtml(c.subtitle)}</span>` : ""}
+      <div class="course-card-header" style="flex-wrap:wrap;gap:6px">
+        <span class="course-room-badge" style="align-self:center">${escHtml(c.room)}</span>
+        <strong style="align-self:center">${escHtml(c.title)}</strong>
         <button class="ghost-action micro danger" style="margin-left:auto" onclick="deleteCourse('${c.id}','${escHtml(c.title)}')">삭제</button>
+        <div style="width:100%;display:flex;gap:6px;align-items:center;padding:6px 0">
+          <input type="text" id="cRoom_${c.id}" value="${escHtml(c.room)}" placeholder="강의실명"
+            style="width:90px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+          <input type="text" id="cTitle_${c.id}" value="${escHtml(c.title)}" placeholder="강의 제목"
+            style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)">
+          <button class="ghost-action micro" onclick="updateCourseMeta('${c.id}')">저장</button>
+        </div>
       </div>
 
       <div class="chapter-list" id="chapterList_${c.id}">
@@ -623,6 +629,21 @@ async function updateChapterAssignment(courseId, chapterId) {
   state = await res.json();
   alert("과제 내용이 저장되었습니다.");
 }
+
+async function updateCourseMeta(courseId) {
+  const room = document.getElementById(`cRoom_${courseId}`)?.value.trim();
+  const title = document.getElementById(`cTitle_${courseId}`)?.value.trim();
+  if (!room || !title) { alert("강의실명과 강의 제목을 입력하세요."); return; }
+  const res = await apiFetch(`/api/admin/courses/${courseId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ room, title }),
+  });
+  if (!res.ok) { const d = await res.json(); alert(d.error || "저장 실패"); return; }
+  state = await res.json();
+  renderCourses();
+}
+window.updateCourseMeta = updateCourseMeta;
 
 // ── Admin Board ───────────────────────────────────────────────
 async function renderAdminBoard() {
@@ -969,21 +990,19 @@ document.getElementById("cancelCourseBtn")?.addEventListener("click", () => {
 document.getElementById("saveCourseBtn")?.addEventListener("click", async () => {
   const title = document.getElementById("newCourseTitle").value.trim();
   const room = document.getElementById("newCourseRoom").value.trim();
-  const subtitle = document.getElementById("newCourseSubtitle").value.trim();
   const statusEl = document.getElementById("courseFormStatus");
   if (!title) { statusEl.textContent = "강의 제목을 입력하세요."; return; }
   statusEl.textContent = "저장 중...";
   const res = await apiFetch("/api/admin/courses", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title, room, subtitle }),
+    body: JSON.stringify({ title, room }),
   });
   const data = await res.json();
   if (!res.ok) { statusEl.textContent = data.error || "실패"; return; }
   state = data;
   document.getElementById("newCourseTitle").value = "";
   document.getElementById("newCourseRoom").value = "";
-  document.getElementById("newCourseSubtitle").value = "";
   document.getElementById("addCourseForm").classList.add("is-hidden");
   statusEl.textContent = "";
   renderCourses();

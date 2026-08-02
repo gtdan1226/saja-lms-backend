@@ -232,7 +232,7 @@ function renderChapters(course) {
         </div>
         <div class="chapter-right">
           <span class="chapter-dur">${ch.duration}</span>
-          <span class="chapter-status">${done ? "✓" : pct > 0 ? `${pct}%` : ""}</span>
+          <span class="chapter-status">${done ? "✓" : ""}</span>
         </div>
       </li>`;
   }).join("");

@@ -1569,6 +1569,7 @@ async function handleApi(req, res, url) {
   // ── Admin: get board posts for a course ──
   if (req.method === "GET" && /^\/api\/admin\/board\/[^/]+$/.test(url.pathname)) {
     try {
+      const db = await readDb();
       requireAdmin(req, db);
       const courseId = url.pathname.split("/")[4];
       const posts = (db.board[courseId] || []).slice(0, 500);
