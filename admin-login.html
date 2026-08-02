@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>관리자 로그인 · 카니발 라이언 LMS</title>
+<script src="/config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --teal: #137a70; --teal-dark: #0e5851; --bg: #f5f5f3; --card: #fff; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141414; --card: #1e1e1e; --text: #e8e8e5; --muted: #9ca3af; --border: #2e2e2e; }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 380px; }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+  .logo-icon { width: 36px; height: 36px; background: #374151; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  input[type=password] { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; background: var(--bg); color: var(--text); outline: none; transition: border-color .15s; }
+  input[type=password]:focus { border-color: var(--teal); }
+  button { display: block; width: 100%; padding: 13px; background: #374151; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background .15s; }
+  button:hover { background: #1f2937; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 14px; color: #b91c1c; font-size: 13px; margin-bottom: 16px; display: none; }
+  .back { font-size: 12px; color: var(--muted); text-align: center; margin-top: 20px; }
+  .back a { color: var(--teal); text-decoration: none; }
+  @media (prefers-color-scheme: dark) {
+    .error-box { background: #2d1515; border-color: #7f1d1d; color: #fca5a5; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🔒</div>
+    <span style="font-weight:700;font-size:15px">관리자 로그인</span>
+  </div>
+  <h1>카니발 라이언 LMS</h1>
+  <p class="subtitle">운영자 전용 페이지입니다.</p>
+  <div class="error-box" id="errorBox"></div>
+  <form id="adminForm">
+    <label for="pwInput">비밀번호</label>
+    <input type="password" id="pwInput" name="password" placeholder="관리자 비밀번호" required autofocus>
+    <button type="submit" id="submitBtn">로그인</button>
+  </form>
+  <p class="back"><a href="/login.html">학생 로그인으로 돌아가기</a></p>
+</div>
+<script>
+const API = (window.CARNIVAL_LION_API_URL || '').replace(/\/$/, '');
+document.getElementById('adminForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const password = document.getElementById('pwInput').value;
+  const btn = document.getElementById('submitBtn');
+  const errBox = document.getElementById('errorBox');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+  try {
+    const res = await fetch(API + '/api/auth/admin/login', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errBox.textContent = data.error || '비밀번호가 올바르지 않습니다.'; errBox.style.display = 'block'; return; }
+    location.href = '/admin.html';
+  } catch (err) {
+    errBox.textContent = '서버에 연결할 수 없습니다.';
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '로그인';
+  }
+});
+</script>
+</body>
+</html>

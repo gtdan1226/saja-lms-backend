@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>강의실 · 카니발 라이언 LMS</title>
+<script src="/config.js"></script>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ─ 로딩 ─────────────────────────────────────────────── -->
+<div id="loadingScreen" class="fullscreen-loader">
+  <div class="loader-inner">
+    <div class="loader-spin"></div>
+    <p>강의실 입장 중...</p>
+  </div>
+</div>
+
+<!-- ─ 앱 셸 ──────────────────────────────────────────────── -->
+<div id="appShell" class="app-shell is-hidden">
+  <!-- 사이드바 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🦁</span>
+      <div class="brand-text">
+        <span class="brand-name">카니발 라이언</span>
+        <span class="brand-sub">LMS</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="courseNav">
+      <!-- JS로 렌더링 -->
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-chip" id="userChip">
+        <span class="user-avatar" id="userAvatar">?</span>
+        <div class="user-info">
+          <span class="user-name" id="userName">로딩 중</span>
+          <span class="user-id" id="userId"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="ghost-action sidebar-logout" id="mypageBtn" style="flex:1">마이페이지</button>
+        <button class="ghost-action sidebar-logout" id="logoutBtn" style="flex:1">로그아웃</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 워크스페이스 -->
+  <main class="workspace" id="workspace">
+
+    <!-- 게이트 배너 (계약/인증 미완료 시) -->
+    <div id="gateBand" class="gate-band is-hidden">
+      <div class="gate-band-inner">
+        <span class="gate-icon">🔒</span>
+        <div class="gate-message">
+          <strong id="gateTitle">접근 제한</strong>
+          <p id="gateDesc"></p>
+        </div>
+        <button id="gateActionBtn" class="primary-action small">계약서 서명</button>
+      </div>
+    </div>
+
+    <!-- 강의 헤더 -->
+    <header class="workspace-header" id="workspaceHeader" style="display:none">
+      <div class="header-meta">
+        <span class="pill" id="roomPill">1강의실</span>
+        <span class="header-subtitle" id="courseSubtitle"></span>
+      </div>
+      <h1 class="workspace-title" id="courseTitle">강의</h1>
+    </header>
+
+    <!-- 강의 탭 -->
+    <div id="courseTabs" style="display:none;border-bottom:1px solid var(--border);padding:0 24px;background:var(--card)">
+      <div style="display:flex">
+        <button id="tabContent" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid var(--teal);font-size:14px;font-weight:600;color:var(--teal);cursor:pointer">강의</button>
+        <button id="tabBoard" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:400;color:var(--muted);cursor:pointer">게시판</button>
+        <button id="tabQa" style="padding:12px 20px;background:none;border:none;border-bottom:2px solid transparent;font-size:14px;font-weight:400;color:var(--muted);cursor:pointer">1:1 질문</button>
+      </div>
+    </div>
+
+    <!-- 비디오 섹션 -->
+    <section class="video-section" id="videoSection" style="display:none">
+      <div class="video-frame" id="videoFrame">
+        <div class="video-placeholder" id="videoPlaceholder">
+          <div class="play-btn-wrap">
+            <button class="play-btn" id="playBtn">▶ 재생 시작</button>
+          </div>
+          <p class="video-meta" id="videoMeta"></p>
+        </div>
+        <div class="watermark" id="watermark"></div>
+      </div>
+
+      <!-- DRM 세션 정보 -->
+      <div class="drm-bar" id="drmBar" style="display:none">
+        <span class="drm-dot active"></span>
+        <span id="drmLabel">재생 중</span>
+        <button class="ghost-action micro" id="endSessionBtn">세션 종료</button>
+      </div>
+    </section>
+
+    <!-- 챕터 목록 -->
+    <section class="chapter-section" id="chapterSection" style="display:none">
+      <h2 class="section-title">챕터 목록</h2>
+      <ul class="chapter-list" id="chapterList"></ul>
+    </section>
+
+    <!-- 과제 제출 -->
+    <section class="submit-section" id="submitSection" style="display:none">
+      <h2 class="section-title">과제 제출 <span class="pill" id="activeCourseForSubmit"></span></h2>
+      <div class="submission-form-wrap">
+        <select id="submitChapterSel" class="submit-select"></select>
+        <textarea id="submitText" class="submit-textarea" rows="4" placeholder="과제 내용 또는 작업 링크를 입력해 주세요."></textarea>
+        <input type="text" id="submitFileName" class="submit-input" placeholder="파일명 (선택)" maxlength="100">
+        <button id="submitBtn" class="primary-action">과제 제출</button>
+        <p id="submitStatus" class="submit-status"></p>
+      </div>
+    </section>
+
+    <!-- 제출 내역 -->
+    <section class="submissions-section" id="submissionsSection" style="display:none">
+      <h2 class="section-title">제출 내역</h2>
+      <ul class="submissions-list" id="submissionsList"></ul>
+    </section>
+
+    <!-- 강의실 없음 -->
+    <div id="emptyState" style="display:none;padding:60px 24px;text-align:center;color:var(--muted)">
+      <p style="font-size:36px;margin-bottom:16px">📦</p>
+      <p>등록된 강의가 없습니다.</p>
+    </div>
+
+    <!-- 마이페이지 -->
+    <section id="mypageSection" style="display:none;padding:32px 24px;max-width:560px">
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:24px">마이페이지</h2>
+      <div id="mypageContent"></div>
+    </section>
+
+    <!-- 게시판 -->
+    <section id="boardSection" style="display:none"></section>
+
+    <!-- 1:1 질문 -->
+    <section id="qaSection" style="display:none"></section>
+
+  </main>
+</div>
+
+<!-- ─ 계약서 모달 ──────────────────────────────────────── -->
+<dialog id="contractModal" class="contract-dialog">
+  <div class="contract-inner">
+    <h2>수강 계약서</h2>
+    <p class="contract-subtitle">강의 시작 전 아래 내용을 읽고 동의해 주세요.</p>
+    <div class="contract-body">
+      <h3>콘텐츠 보호 정책</h3>
+      <p>본 강의는 DRM 기술로 보호됩니다. 녹화, 캡처, 재배포 시 법적 책임을 질 수 있습니다.</p>
+      <h3>수강 조건</h3>
+      <p>수강권은 1인 전용이며 타인과 공유할 수 없습니다. 최대 2대의 기기에서 이용 가능합니다.</p>
+      <h3>환불 규정</h3>
+      <p>수강 시작 후 7일 내에 환불이 가능합니다. 이후에는 환불이 불가합니다.</p>
+      <h3>개인정보 처리</h3>
+      <p>성명과 이메일은 수강 관리 및 수료증 발급에만 사용됩니다.</p>
+    </div>
+    <div class="contract-form">
+      <div class="form-row">
+        <label>성명</label>
+        <input type="text" id="contractName" placeholder="실명 입력" maxlength="30">
+      </div>
+      <div class="form-row">
+        <label>이메일</label>
+        <input type="email" id="contractEmail" placeholder="주문 이메일">
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="contractConfirm">
+        <span>위 내용을 모두 읽었으며 동의합니다.</span>
+      </label>
+    </div>
+    <div class="contract-actions">
+      <button class="ghost-action" id="contractClose">취소</button>
+      <button class="primary-action" id="contractSign">서명 완료</button>
+    </div>
+    <p id="contractError" class="contract-error"></p>
+  </div>
+</dialog>
+
+<script src="/student.js"></script>
+<script>
+  (function(){var w=window;if(w.ChannelIO){return w.console.error("ChannelIO script included twice.");}var ch=function(){ch.c(arguments);};ch.q=[];ch.c=function(args){ch.q.push(args);};w.ChannelIO=ch;function l(){if(w.ChannelIOInitialized){return;}w.ChannelIOInitialized=true;var s=document.createElement("script");s.type="text/javascript";s.async=true;s.src="https://cdn.channel.io/plugin/ch-plugin-web.js";var x=document.getElementsByTagName("script")[0];if(x.parentNode){x.parentNode.insertBefore(s,x);}}if(document.readyState==="complete"){l();}else{w.addEventListener("DOMContentLoaded",l);w.addEventListener("load",l);}})();
+  ChannelIO('boot', { "pluginKey": "c322613d-c8ba-4c8a-8336-076bb6c18c70" });
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>로그인 · 카니발 라이언 LMS</title>
+<script src="/config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --teal: #137a70; --teal-dark: #0e5851; --bg: #f5f5f3; --card: #fff; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141414; --card: #1e1e1e; --text: #e8e8e5; --muted: #9ca3af; --border: #2e2e2e; }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--teal); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .field { margin-bottom: 14px; }
+  input[type=email], input[type=password] { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color .15s; }
+  input:focus { border-color: var(--teal); }
+  button { display: block; width: 100%; padding: 12px; background: var(--teal); color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px; transition: background .15s; }
+  button:hover { background: var(--teal-dark); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 11px 13px; color: #b91c1c; font-size: 13px; margin-bottom: 14px; display: none; }
+  .info-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 11px 13px; color: #15803d; font-size: 13px; margin-bottom: 14px; display: none; }
+  .pw-help { font-size: 12px; color: var(--muted); margin-top: 16px; line-height: 1.6; border-top: 1px solid var(--border); padding-top: 14px; }
+  @media (prefers-color-scheme: dark) {
+    .error-box { background: #2d1515; border-color: #7f1d1d; color: #fca5a5; }
+    .info-box { background: #052e16; border-color: #14532d; color: #86efac; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🦁</div>
+    <strong style="font-size:14px">카니발 라이언 LMS</strong>
+  </div>
+  <h1>강의실 로그인</h1>
+  <p class="subtitle">가입 시 등록한 이메일과 비밀번호를 입력하세요.</p>
+
+  <div class="error-box" id="errorBox"></div>
+  <div class="info-box" id="infoBox"></div>
+
+  <form id="loginForm">
+    <div class="field">
+      <label for="emailInput">이메일</label>
+      <input type="email" id="emailInput" placeholder="example@email.com" required autocomplete="email">
+    </div>
+    <div class="field">
+      <label for="pwInput">비밀번호</label>
+      <input type="password" id="pwInput" placeholder="비밀번호 입력" required autocomplete="current-password">
+    </div>
+    <button type="submit" id="submitBtn">로그인</button>
+  </form>
+
+  <p class="pw-help">
+    비밀번호를 잊으셨나요? 비밀번호 초기화는 관리자에게 문의하세요.<br>
+    카카오채널 <strong>@카니발라이언</strong> 또는 이메일 <strong>gtdan1226@gmail.com</strong>
+  </p>
+</div>
+
+<script>
+const API = (window.CARNIVAL_LION_API_URL || '').replace(/\/$/, '');
+
+// Device fingerprint (persistent per browser)
+function getDeviceId() {
+  let id = localStorage.getItem('clms_device_id');
+  if (!id) {
+    id = 'dev_' + crypto.randomUUID().replace(/-/g, '');
+    localStorage.setItem('clms_device_id', id);
+  }
+  return id;
+}
+
+const params = new URLSearchParams(location.search);
+const errParam = params.get('error');
+const msgParam = params.get('msg');
+const emailParam = params.get('email');
+
+if (errParam) {
+  const box = document.getElementById('errorBox');
+  box.textContent = decodeURIComponent(errParam);
+  box.style.display = 'block';
+}
+if (msgParam === 'already_registered') {
+  const box = document.getElementById('infoBox');
+  box.textContent = '이미 가입된 계정입니다. 이메일과 비밀번호로 로그인하세요.';
+  box.style.display = 'block';
+}
+if (emailParam) {
+  document.getElementById('emailInput').value = decodeURIComponent(emailParam);
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('emailInput').value.trim();
+  const password = document.getElementById('pwInput').value;
+  const btn = document.getElementById('submitBtn');
+  const errBox = document.getElementById('errorBox');
+  errBox.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = '로그인 중...';
+  try {
+    const res = await fetch(API + '/api/auth/login', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, deviceId: getDeviceId() }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errBox.textContent = data.error || '로그인 실패';
+      errBox.style.display = 'block';
+      return;
+    }
+    location.href = '/student.html';
+  } catch {
+    errBox.textContent = '서버에 연결할 수 없습니다.';
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '로그인';
+  }
+});
+</script>
+<script>
+  (function(){var w=window;if(w.ChannelIO){return w.console.error("ChannelIO script included twice.");}var ch=function(){ch.c(arguments);};ch.q=[];ch.c=function(args){ch.q.push(args);};w.ChannelIO=ch;function l(){if(w.ChannelIOInitialized){return;}w.ChannelIOInitialized=true;var s=document.createElement("script");s.type="text/javascript";s.async=true;s.src="https://cdn.channel.io/plugin/ch-plugin-web.js";var x=document.getElementsByTagName("script")[0];if(x.parentNode){x.parentNode.insertBefore(s,x);}}if(document.readyState==="complete"){l();}else{w.addEventListener("DOMContentLoaded",l);w.addEventListener("load",l);}})();
+  ChannelIO('boot', { "pluginKey": "c322613d-c8ba-4c8a-8336-076bb6c18c70" });
+</script>
+</body>
+</html>

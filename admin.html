@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>관리자 · 카니발 라이언 LMS</title>
+<script src="/config.js"></script>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="admin-body">
+
+<!-- ─ 로딩 ─────────────────────────────────────────────── -->
+<div id="loadingScreen" class="fullscreen-loader">
+  <div class="loader-inner">
+    <div class="loader-spin"></div>
+    <p>관리자 대시보드 로딩 중...</p>
+  </div>
+</div>
+
+<!-- ─ 관리자 앱 ────────────────────────────────────────── -->
+<div id="adminApp" class="admin-app is-hidden">
+
+  <!-- 헤더 -->
+  <header class="admin-header">
+    <div class="admin-brand">
+      <span class="brand-icon small">🦁</span>
+      <span class="admin-brand-name">카니발 라이언 LMS</span>
+      <span class="admin-badge">관리자</span>
+    </div>
+    <div class="admin-header-actions">
+      <button class="ghost-action micro" id="refreshBtn">새로고침</button>
+      <button class="admin-logout-btn" id="logoutBtn">로그아웃</button>
+    </div>
+  </header>
+
+  <!-- 스탯 바 -->
+  <div class="admin-stats-bar" id="statsBar">
+    <div class="stat-card">
+      <span class="stat-num" id="statTotal">-</span>
+      <span class="stat-label">총 학생</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num accent" id="statPending">-</span>
+      <span class="stat-label">피드백 대기</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num teal" id="statActive">-</span>
+      <span class="stat-label">현재 시청 중</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num" id="statR2">-</span>
+      <span class="stat-label">R2 연결</span>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <div class="admin-tabs">
+    <button class="admin-tab is-active" data-tab="students">학생 관리</button>
+    <button class="admin-tab" data-tab="submissions">제출 과제 <span class="badge" id="subBadge"></span></button>
+    <button class="admin-tab" data-tab="invite">학생 초대</button>
+    <button class="admin-tab" data-tab="r2">영상 관리</button>
+    <button class="admin-tab" data-tab="courses">강의실 관리</button>
+    <button class="admin-tab" data-tab="imweb">아임웹 연동</button>
+    <button class="admin-tab" data-tab="log">DRM 로그</button>
+    <button class="admin-tab" data-tab="questions">1:1 질문 <span class="badge" id="qBadge"></span></button>
+  </div>
+
+  <!-- ── 탭: 학생 관리 ──────────────────────────────────── -->
+  <section class="admin-tab-content" id="tabStudents">
+    <div class="admin-section-header">
+      <h2>학생 목록</h2>
+      <input type="search" id="studentSearch" placeholder="이름 / 이메일 검색" class="admin-search">
+    </div>
+    <div class="student-grid" id="studentGrid">
+      <p class="empty-hint">학생이 없습니다.</p>
+    </div>
+  </section>
+
+  <!-- ── 탭: 제출 과제 ─────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabSubmissions">
+    <h2>피드백 대기 과제</h2>
+    <ul class="submission-queue" id="submissionQueue">
+      <li class="empty-hint">대기 중인 과제가 없습니다.</li>
+    </ul>
+  </section>
+
+  <!-- ── 탭: 학생 초대 ─────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabInvite">
+    <h2>새 학생 초대</h2>
+    <div class="invite-form-card">
+      <div class="form-row">
+        <label>이메일 <span class="req">*</span></label>
+        <input type="email" id="inviteEmail" placeholder="student@example.com">
+      </div>
+      <div class="form-row">
+        <label>이름</label>
+        <input type="text" id="inviteName" placeholder="학생 이름 (선택)">
+      </div>
+      <div class="form-row">
+        <label>주문번호</label>
+        <input type="text" id="inviteOrderNo" placeholder="주문번호 (선택)">
+      </div>
+      <div class="form-row">
+        <label>강의 선택</label>
+        <div class="course-checks" id="courseChecks"></div>
+      </div>
+      <button class="primary-action" id="inviteBtn">초대 발송</button>
+      <p id="inviteStatus" class="form-status"></p>
+    </div>
+    <h3 style="margin-top:32px;margin-bottom:12px">초대 내역</h3>
+    <ul class="invite-log" id="inviteLog">
+      <li class="empty-hint">초대 내역이 없습니다.</li>
+    </ul>
+  </section>
+
+  <!-- ── 탭: 영상 관리 ─────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabR2">
+    <h2>R2 영상 관리</h2>
+    <div class="r2-status-card" id="r2StatusCard">
+      <p class="muted">R2 상태 확인 중...</p>
+    </div>
+    <h3 style="margin:24px 0 12px">영상 업로드</h3>
+    <div class="r2-upload-card">
+      <div class="form-row">
+        <label>강의</label>
+        <select id="r2CourseId" class="admin-select"></select>
+      </div>
+      <div class="form-row">
+        <label>챕터</label>
+        <select id="r2ChapterId" class="admin-select"></select>
+      </div>
+      <div class="form-row">
+        <label>파일 선택 (.mp4)</label>
+        <input type="file" id="r2FileInput" accept="video/mp4,video/webm">
+      </div>
+      <button class="primary-action" id="r2UploadBtn">업로드 URL 생성 후 업로드</button>
+      <div class="upload-progress" id="uploadProgress" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <span id="progressLabel">0%</span>
+      </div>
+      <p id="r2Status" class="form-status"></p>
+    </div>
+    <h3 style="margin:24px 0 12px">업로드된 영상</h3>
+    <ul class="r2-file-list" id="r2FileList">
+      <li class="empty-hint">영상을 불러오는 중...</li>
+    </ul>
+  </section>
+
+  <!-- ── 탭: 강의실 관리 ──────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabCourses">
+    <div class="admin-section-header">
+      <h2>강의 목록</h2>
+      <button class="primary-action micro" id="addCourseBtn">+ 강의 추가</button>
+    </div>
+    <!-- 강의 추가 폼 (기본 숨김) -->
+    <div class="invite-form-card is-hidden" id="addCourseForm" style="margin-bottom:24px">
+      <div class="form-row">
+        <label>강의 제목 <span class="req">*</span></label>
+        <input type="text" id="newCourseTitle" placeholder="예: DAW 기초 마스터">
+      </div>
+      <div class="form-row">
+        <label>강의실명</label>
+        <input type="text" id="newCourseRoom" placeholder="예: 1강의실 (미입력 시 자동)">
+      </div>
+      <div class="form-row">
+        <label>부제</label>
+        <input type="text" id="newCourseSubtitle" placeholder="예: 초보자를 위한 완벽 가이드">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="primary-action" id="saveCourseBtn">저장</button>
+        <button class="ghost-action" id="cancelCourseBtn">취소</button>
+      </div>
+      <p id="courseFormStatus" class="form-status"></p>
+    </div>
+    <!-- 강의 목록 -->
+    <div id="courseList"></div>
+  </section>
+
+  <!-- ── 탭: 아임웹 연동 ──────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabImweb">
+
+    <!-- 상품→강의 매핑 -->
+    <div class="imweb-section">
+      <div class="admin-section-header">
+        <h2>상품 → 강의 매핑</h2>
+        <button class="ghost-action micro" id="loadImwebProductsBtn">아임웹 상품 불러오기</button>
+      </div>
+      <p class="muted-text" style="font-size:13px;margin-bottom:12px">아임웹 결제 웹훅이 들어올 때 상품코드로 강의를 자동 매핑합니다. 상품코드가 일치하지 않으면 수강권이 잘못 생성됩니다.</p>
+      <div id="imwebMappingTable"></div>
+    </div>
+
+    <!-- 결제 내역 -->
+    <div class="imweb-section" style="margin-top:32px">
+      <div class="admin-section-header">
+        <h2>결제 내역</h2>
+        <button class="ghost-action micro" id="loadImwebOrdersBtn">불러오기</button>
+      </div>
+      <div id="imwebOrdersTable"><p class="empty-hint">위 버튼을 눌러 불러오세요.</p></div>
+    </div>
+
+    <!-- 회원 목록 -->
+    <div class="imweb-section" style="margin-top:32px">
+      <div class="admin-section-header">
+        <h2>아임웹 회원 목록</h2>
+        <button class="ghost-action micro" id="loadImwebMembersBtn">불러오기</button>
+      </div>
+      <div id="imwebMembersTable"><p class="empty-hint">위 버튼을 눌러 불러오세요.</p></div>
+    </div>
+
+  </section>
+
+  <!-- ── 탭: DRM 로그 ──────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabLog">
+    <h2>DRM 이벤트 로그</h2>
+    <ul class="drm-log-list" id="drmLogList">
+      <li class="empty-hint">이벤트가 없습니다.</li>
+    </ul>
+  </section>
+
+  <!-- ── 탭: 1:1 질문 ──────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabQuestions">
+    <h2>1:1 질문 관리</h2>
+    <ul class="submission-queue" id="questionsList">
+      <li class="empty-hint">질문이 없습니다.</li>
+    </ul>
+  </section>
+
+</div>
+
+<!-- ─ 학생 상세 모달 ────────────────────────────────────── -->
+<dialog id="studentModal" class="student-modal">
+  <div class="student-modal-inner">
+    <div class="modal-header">
+      <h2 id="modalStudentName">학생</h2>
+      <button class="ghost-action micro" id="modalPreviewBtn">학생 화면 보기</button>
+      <button class="ghost-action micro" id="modalClose">닫기</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</dialog>
+
+<script src="/admin.js"></script>
+</body>
+</html>

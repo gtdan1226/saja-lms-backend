@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>강의실 등록 · 카니발 라이언 LMS</title>
+<script src="/config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --teal: #137a70; --teal-dark: #0e5851; --bg: #f5f5f3; --card: #fff; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141414; --card: #1e1e1e; --text: #e8e8e5; --muted: #9ca3af; --border: #2e2e2e; }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 36px 40px; width: 100%; max-width: 420px; }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--teal); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 22px; line-height: 1.5; }
+  .field { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .req { color: #e53e3e; margin-left: 2px; }
+  input[type=email], input[type=text], input[type=password], input[type=tel] {
+    width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color .15s;
+  }
+  input:focus { border-color: var(--teal); }
+  input[readonly] { background: var(--border); cursor: not-allowed; opacity: .75; }
+  .pw-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .consent-row { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 4px; }
+  .consent-row input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--teal); margin-top: 1px; }
+  .consent-row label { font-size: 13px; font-weight: 400; color: var(--text); line-height: 1.5; cursor: pointer; }
+  .consent-row label span { color: var(--muted); }
+  button { display: block; width: 100%; padding: 13px; background: var(--teal); color: #fff; border: none;
+    border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; transition: background .15s; }
+  button:hover { background: var(--teal-dark); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 11px 13px; color: #b91c1c; font-size: 13px; margin-bottom: 14px; display: none; }
+  .loading-card { text-align: center; padding: 40px 0; color: var(--muted); font-size: 14px; }
+  .success-card { text-align: center; padding: 20px 0; }
+  .success-icon { font-size: 40px; margin-bottom: 12px; }
+  .success-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .success-sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  @media (prefers-color-scheme: dark) {
+    .error-box { background: #2d1515; border-color: #7f1d1d; color: #fca5a5; }
+  }
+</style>
+</head>
+<body>
+<div class="card" id="mainCard">
+  <div class="loading-card" id="loadingView">
+    <div>초대 링크 확인 중...</div>
+  </div>
+</div>
+
+<script>
+const API = (window.CARNIVAL_LION_API_URL || '').replace(/\/$/, '');
+const params = new URLSearchParams(location.search);
+const token = params.get('token') || '';
+
+function getDeviceId() {
+  let id = localStorage.getItem('clms_device_id');
+  if (!id) {
+    id = 'dev_' + crypto.randomUUID().replace(/-/g, '');
+    localStorage.setItem('clms_device_id', id);
+  }
+  return id;
+}
+
+async function init() {
+  if (!token) { showError('초대 링크가 없습니다. 관리자에게 문의하세요.'); return; }
+  try {
+    const res = await fetch(API + '/api/auth/invite-check?token=' + encodeURIComponent(token));
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 409) {
+        // Already registered
+        showAlreadyRegistered(data.error);
+      } else {
+        showError(data.error || '유효하지 않은 초대 링크입니다.');
+      }
+      return;
+    }
+    showForm(data.email, data.name);
+  } catch {
+    showError('서버에 연결할 수 없습니다.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('mainCard').innerHTML = `
+    <div class="logo"><div class="logo-icon">🦁</div><strong style="font-size:14px">카니발 라이언 LMS</strong></div>
+    <div class="error-box" style="display:block">${msg}</div>
+    <p style="font-size:13px;color:var(--muted);margin-top:8px">문의: <strong>gtdan1226@gmail.com</strong></p>`;
+}
+
+function showAlreadyRegistered(msg) {
+  document.getElementById('mainCard').innerHTML = `
+    <div class="logo"><div class="logo-icon">🦁</div><strong style="font-size:14px">카니발 라이언 LMS</strong></div>
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <div class="success-title">이미 가입된 계정입니다</div>
+      <p class="success-sub">로그인 페이지에서 이메일과 비밀번호로 로그인하세요.</p>
+      <button onclick="location.href='/login.html'" style="margin-top:20px">로그인 페이지로</button>
+    </div>`;
+}
+
+function showForm(email, name) {
+  document.getElementById('mainCard').innerHTML = `
+    <div class="logo"><div class="logo-icon">🦁</div><strong style="font-size:14px">카니발 라이언 LMS</strong></div>
+    <h1>강의실 등록</h1>
+    <p class="subtitle">아래 정보를 입력하면 강의실에 접속할 수 있습니다.</p>
+    <div class="error-box" id="errBox"></div>
+    <form id="regForm">
+      <div class="field">
+        <label>이메일</label>
+        <input type="email" id="emailInput" value="${escHtml(email)}" readonly>
+      </div>
+      <div class="field">
+        <label for="nameInput">이름 <span class="req">*</span></label>
+        <input type="text" id="nameInput" value="${escHtml(name)}" placeholder="실명 입력" required>
+      </div>
+      <div class="field">
+        <label for="phoneInput">연락처</label>
+        <input type="tel" id="phoneInput" placeholder="010-0000-0000">
+      </div>
+      <div class="field">
+        <label for="pwInput">비밀번호 <span class="req">*</span></label>
+        <input type="password" id="pwInput" placeholder="8자 이상" required autocomplete="new-password">
+        <p class="pw-hint">영문·숫자 조합 8자 이상</p>
+      </div>
+      <div class="field">
+        <label for="pwInput2">비밀번호 확인 <span class="req">*</span></label>
+        <input type="password" id="pwInput2" placeholder="비밀번호 재입력" required autocomplete="new-password">
+      </div>
+      <div class="consent-row">
+        <input type="checkbox" id="consentCheck">
+        <label for="consentCheck">
+          개인정보 수집 및 이용에 동의합니다.<br>
+          <span>수집 항목: 이름, 이메일, 연락처 / 목적: 회원관리 및 강의 운영 / 보유기간: 서비스 이용 기간</span>
+        </label>
+      </div>
+      <button type="submit" id="submitBtn">가입 완료 및 강의실 입장</button>
+    </form>`;
+
+  document.getElementById('regForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name2 = document.getElementById('nameInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+    const pw = document.getElementById('pwInput').value;
+    const pw2 = document.getElementById('pwInput2').value;
+    const consent = document.getElementById('consentCheck').checked;
+    const errBox = document.getElementById('errBox');
+    const btn = document.getElementById('submitBtn');
+
+    errBox.style.display = 'none';
+    if (!name2) { errBox.textContent = '이름을 입력해 주세요.'; errBox.style.display = 'block'; return; }
+    if (pw.length < 8) { errBox.textContent = '비밀번호는 8자 이상이어야 합니다.'; errBox.style.display = 'block'; return; }
+    if (pw !== pw2) { errBox.textContent = '비밀번호가 일치하지 않습니다.'; errBox.style.display = 'block'; return; }
+    if (!consent) { errBox.textContent = '개인정보 수집 및 이용에 동의해야 합니다.'; errBox.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    try {
+      const res = await fetch(API + '/api/auth/register', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, name: name2, phone, password: pw, privacyConsent: true, deviceId: getDeviceId() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errBox.textContent = data.error || '가입 실패'; errBox.style.display = 'block'; return; }
+      showSuccess();
+    } catch {
+      errBox.textContent = '서버에 연결할 수 없습니다.';
+      errBox.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '가입 완료 및 강의실 입장';
+    }
+  });
+}
+
+function showSuccess() {
+  document.getElementById('mainCard').innerHTML = `
+    <div class="success-card">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">가입이 완료되었습니다!</div>
+      <p class="success-sub">잠시 후 강의실로 이동합니다...</p>
+    </div>`;
+  setTimeout(() => { location.href = '/student.html'; }, 1500);
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+<script>
+  (function(){var w=window;if(w.ChannelIO){return w.console.error("ChannelIO script included twice.");}var ch=function(){ch.c(arguments);};ch.q=[];ch.c=function(args){ch.q.push(args);};w.ChannelIO=ch;function l(){if(w.ChannelIOInitialized){return;}w.ChannelIOInitialized=true;var s=document.createElement("script");s.type="text/javascript";s.async=true;s.src="https://cdn.channel.io/plugin/ch-plugin-web.js";var x=document.getElementsByTagName("script")[0];if(x.parentNode){x.parentNode.insertBefore(s,x);}}if(document.readyState==="complete"){l();}else{w.addEventListener("DOMContentLoaded",l);w.addEventListener("load",l);}})();
+  ChannelIO('boot', { "pluginKey": "c322613d-c8ba-4c8a-8336-076bb6c18c70" });
+</script>
+</body>
+</html>
