@@ -1608,12 +1608,6 @@ async function handleApi(req, res, url) {
     return;
   }
 
-  // ── Dev reset ──
-  if (req.method === "POST" && url.pathname === "/api/demo/reset") {
-    await writeDb(defaultDb());
-    ok({ ok: true, message: "DB 초기화 완료" });
-    return;
-  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // ── Board: get posts for a course ──
