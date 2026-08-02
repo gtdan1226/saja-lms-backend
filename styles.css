@@ -1111,7 +1111,8 @@ button.chapter-item {
 /* ── Contract dialog ─────────────────────────────────────── */
 .contract-dialog {
   border: none; border-radius: 14px; box-shadow: var(--shadow);
-  padding: 0; max-width: 520px; width: 92%; background: var(--panel);
+  padding: 0; max-width: 560px; width: 95%; background: var(--panel);
+  max-height: 92vh; overflow-y: auto;
 }
 .contract-dialog::backdrop { background: rgba(0,0,0,.5); }
 .contract-inner { padding: 28px; }
