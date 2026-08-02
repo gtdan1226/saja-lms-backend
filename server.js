@@ -374,7 +374,7 @@ function pruneExpired(db) {
 }
 
 // ── State projections ─────────────────────────────────────────────────────────
-function toClientState(db, userId, currentDeviceId = null) {
+async function toClientState(db, userId, currentDeviceId = null) {
   const user = db.users.find((u) => u.id === userId);
   if (!user) return { error: "사용자 없음" };
   const enrollment = db.enrollments.find((e) => e.userId === user.id);
@@ -382,7 +382,11 @@ function toClientState(db, userId, currentDeviceId = null) {
   const latestInvite = db.invitations.filter((i) => i.userId === user.id)[0] || null;
   const userDevices = db.drm.devices?.[user.id] || [];
   const rawSession = db.drm.activeSessions?.[user.id] || null;
-  const activeSession = rawSession && new Date(rawSession.expiresAt).getTime() > Date.now() ? rawSession : null;
+  let activeSession = rawSession && new Date(rawSession.expiresAt).getTime() > Date.now() ? rawSession : null;
+  if (activeSession && r2) {
+    const freshUrl = await generateR2PlaybackUrl(activeSession.courseId, activeSession.chapterId).catch(() => null);
+    if (freshUrl) activeSession = { ...activeSession, manifestUrl: freshUrl };
+  }
   const enrolledIds = enrollment?.courseIds || [];
   const thisMonth = new Date().toISOString().slice(0, 7);
   const removalLog = db.drm.deviceRemovalLog?.[user.id] || [];
@@ -795,7 +799,7 @@ async function handleApi(req, res, url) {
     const db = await updateDb((current) => current);
     try {
       const { user, session } = requireStudent(req, db);
-      ok(toClientState(db, user.id, session.deviceId || null));
+      ok(await toClientState(db, user.id, session.deviceId || null));
     } catch (e) { fail(e.status || 401, e.message); }
     return;
   }
@@ -826,7 +830,7 @@ async function handleApi(req, res, url) {
         userAgent: req.headers["user-agent"] || "",
       });
     });
-    ok(toClientState(db, uid));
+    ok(await toClientState(db, uid));
     return;
   }
 
@@ -870,8 +874,8 @@ async function handleApi(req, res, url) {
       current.progress[key] = Math.max(current.progress[key] || 0, 45);
       addLicenseLog(current, "license_issued", "allowed", `${chapter.label} DRM 라이선스 발급`, user.id);
     });
-    if (playbackError) { fail(409, playbackError, { state: uid ? toClientState(db, uid) : {} }); return; }
-    ok(toClientState(db, uid));
+    if (playbackError) { fail(409, playbackError, { state: uid ? await toClientState(db, uid) : {} }); return; }
+    ok(await toClientState(db, uid));
     return;
   }
 
@@ -889,7 +893,7 @@ async function handleApi(req, res, url) {
       if (current.drm.activeSessions?.[user.id]?.chapterId === chapter.id) delete current.drm.activeSessions[user.id];
       addLicenseLog(current, "session_completed", "ended", `${chapter.label} 시청 완료`, user.id);
     });
-    ok(toClientState(db, uid));
+    ok(await toClientState(db, uid));
     return;
   }
 
@@ -913,7 +917,7 @@ async function handleApi(req, res, url) {
         status: "feedback_requested", createdAt: formatNow(), feedback: "", feedbackAt: "",
       });
     });
-    ok(toClientState(db, uid));
+    ok(await toClientState(db, uid));
     return;
   }
 
@@ -942,7 +946,7 @@ async function handleApi(req, res, url) {
         delete current.drm.activeSessions[user.id];
       }
     });
-    ok(toClientState(db, uid, devId));
+    ok(await toClientState(db, uid, devId));
     return;
   }
 
@@ -963,7 +967,7 @@ async function handleApi(req, res, url) {
         user.passwordHash = hashPw(newPassword, salt);
         user.passwordSalt = salt;
       });
-      ok(toClientState(db, uid, devId));
+      ok(await toClientState(db, uid, devId));
     } catch (e) { fail(e.status || 500, e.message); }
     return;
   }
@@ -995,7 +999,7 @@ async function handleApi(req, res, url) {
         loggedOut = true;
       }
     });
-    ok({ ok: true, loggedOut, state: loggedOut ? null : toClientState(db, uid, currentDevId) });
+    ok({ ok: true, loggedOut, state: loggedOut ? null : await toClientState(db, uid, currentDevId) });
     return;
   }
 
@@ -1436,7 +1440,7 @@ async function handleApi(req, res, url) {
     const db = await updateDb((current) => current);
     try {
       requireAdmin(req, db);
-      const clientState = toClientState(db, userId);
+      const clientState = await toClientState(db, userId);
       if (clientState.error) { fail(404, "학생을 찾을 수 없습니다."); return; }
       ok({ ...clientState, _previewMode: true });
     } catch (e) { fail(e.status || 401, e.message); }

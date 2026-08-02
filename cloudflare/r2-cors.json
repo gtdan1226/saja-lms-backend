@@ -1,23 +1,29 @@
-[
-  {
-    "AllowedOrigins": [
-      "https://lms.example.com",
-      "http://127.0.0.1:8941"
-    ],
-    "AllowedMethods": [
-      "GET",
-      "HEAD"
-    ],
-    "AllowedHeaders": [
-      "Authorization",
-      "Range",
-      "Content-Type"
-    ],
-    "ExposeHeaders": [
-      "Content-Length",
-      "Content-Range",
-      "Accept-Ranges"
-    ],
-    "MaxAgeSeconds": 3600
-  }
-]
+{
+  "rules": [
+    {
+      "allowedOrigins": [
+        "https://lms.shuffleland.com",
+        "https://api-lms.shuffleland.com",
+        "http://127.0.0.1:8941",
+        "http://localhost:3000"
+      ],
+      "allowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+      "allowedHeaders": [
+        "Authorization",
+        "Range",
+        "Content-Type",
+        "Content-Length",
+        "x-amz-content-sha256",
+        "x-amz-date",
+        "x-amz-security-token"
+      ],
+      "exposeHeaders": [
+        "Content-Length",
+        "Content-Range",
+        "Accept-Ranges",
+        "ETag"
+      ],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

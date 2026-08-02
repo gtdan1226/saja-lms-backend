@@ -201,6 +201,11 @@ function renderVideoSection(course) {
   const isForThisCourse = activeSession?.courseId === course.id;
   const video = document.getElementById("courseVideo");
 
+  // 페이지 새로고침 후 activeChapterId가 null이어도 진행 중인 세션 챕터로 자동 복원
+  if (isForThisCourse && activeSession.chapterId && !activeChapterId) {
+    activeChapterId = activeSession.chapterId;
+  }
+
   if (isForThisCourse && activeChapterId === activeSession.chapterId) {
     document.getElementById("videoPlaceholder").style.display = "none";
     document.getElementById("drmBar").style.display = "";
