@@ -454,6 +454,7 @@ function toAdminState(db) {
   return {
     courses: db.courses,
     students,
+    contracts: (db.contractSignatures || []).slice(0, 500),
     pendingSubmissions: db.submissions.filter((s) => s.status === "feedback_requested"),
     recentSubmissions: db.submissions.slice(0, 50),
     invitations: db.invitations.slice(0, 30),
@@ -813,19 +814,27 @@ async function handleApi(req, res, url) {
       uid = user.id;
       const name = String(body.name || "").trim();
       const email = String(body.email || "").trim().toLowerCase();
+      const phone = String(body.phone || "").trim();
+      const birthDate = String(body.birthDate || "").trim();
+      const signatureImageData = String(body.signatureImageData || "");
       if (!name || !email) throw httpError(400, "이름과 이메일이 필요합니다.");
+      if (!phone) throw httpError(400, "전화번호가 필요합니다.");
+      if (!birthDate) throw httpError(400, "생년월일이 필요합니다.");
       if (!body.confirmed) throw httpError(400, "계약 확인 동의가 필요합니다.");
       if (!enrollment) throw httpError(403, "수강권이 없습니다.");
       if (email !== enrollment.buyerEmail.toLowerCase()) throw httpError(409, "주문 이메일과 서명 이메일이 일치하지 않습니다.");
       user.name = name;
+      user.phone = phone;
+      user.birthDate = birthDate;
       enrollment.contractSigned = true;
       enrollment.status = "active";
       enrollment.emailVerified = true;
       current.contractSignatures.unshift({
         id: `contract_${randomUUID()}`, userId: user.id, enrollmentId: enrollment.id,
-        version: "LMS-CONTRACT-2026.07-A",
-        documentHash: sha256hex("LMS-CONTRACT-2026.07-A:content-protection:watermark:privacy"),
-        name, email, signedAt: formatNow(), signatureMethod: "checkbox_agreement",
+        version: "LMS-CONTRACT-2026.08-B",
+        documentHash: sha256hex("LMS-CONTRACT-2026.08-B:drm:3devices:stamp:200만원-penalty:privacy"),
+        name, email, phone, birthDate, signatureImageData,
+        signedAt: formatNow(), signatureMethod: "stamp_signature",
         ipAddress: (req.headers["x-forwarded-for"] || "").split(",")[0]?.trim() || "unknown",
         userAgent: req.headers["user-agent"] || "",
       });

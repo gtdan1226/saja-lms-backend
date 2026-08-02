@@ -62,6 +62,7 @@ function renderCurrentTab() {
   else if (activeTab === "log") renderDrmLog();
   else if (activeTab === "questions") renderQuestions();
   else if (activeTab === "board") renderAdminBoard();
+  else if (activeTab === "contracts") renderContracts();
 }
 
 // ── Students ────────────────────────────────────────────────
@@ -540,7 +541,7 @@ document.querySelectorAll(".admin-tab").forEach((btn) => {
     document.querySelectorAll(".admin-tab-content").forEach((s) => s.classList.add("is-hidden"));
     btn.classList.add("is-active");
     activeTab = btn.dataset.tab;
-    const tabMap = { students: "tabStudents", submissions: "tabSubmissions", invite: "tabInvite", r2: "tabR2", courses: "tabCourses", imweb: "tabImweb", log: "tabLog", questions: "tabQuestions", board: "tabBoard" };
+    const tabMap = { students: "tabStudents", submissions: "tabSubmissions", invite: "tabInvite", r2: "tabR2", courses: "tabCourses", imweb: "tabImweb", log: "tabLog", questions: "tabQuestions", board: "tabBoard", contracts: "tabContracts" };
     document.getElementById(tabMap[activeTab])?.classList.remove("is-hidden");
     renderCurrentTab();
   });
@@ -1150,6 +1151,107 @@ async function answerQuestion(questionId) {
   renderQuestions();
 }
 
+// ── Contracts tab ─────────────────────────────────────────────
+function renderContracts() {
+  const el = document.getElementById("contractsList");
+  const contracts = state.contracts || [];
+  if (!contracts.length) { el.innerHTML = "<p class='empty-hint'>서명된 계약서가 없습니다.</p>"; return; }
+
+  const usersMap = {};
+  (state.students || []).forEach((s) => { usersMap[s.user.id] = s.user; });
+
+  el.innerHTML = contracts.map((c) => {
+    const user = usersMap[c.userId] || {};
+    const hasSig = !!(c.signatureImageData && c.signatureImageData.startsWith("data:image"));
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <strong>${escHtml(c.name || user.name || "")}</strong>
+          <span style="font-size:12px;color:var(--muted)">${escHtml(c.email || user.email || "")}</span>
+          ${hasSig ? '<span style="font-size:11px;background:#d4edda;color:#155724;padding:2px 7px;border-radius:4px">도장서명</span>' : '<span style="font-size:11px;background:#fff3cd;color:#856404;padding:2px 7px;border-radius:4px">체크동의</span>'}
+        </div>
+        <div style="font-size:12px;color:var(--muted)">
+          <span>서명일: ${escHtml(c.signedAt || "")}</span>
+          ${c.phone ? `&nbsp;·&nbsp; 전화: ${escHtml(c.phone)}` : ""}
+          ${c.birthDate ? `&nbsp;·&nbsp; 생년월일: ${escHtml(c.birthDate)}` : ""}
+          &nbsp;·&nbsp; 버전: ${escHtml(c.version || "")}
+        </div>
+      </div>
+      <button class="ghost-action micro" onclick="viewContract('${escHtml(c.id)}')">계약서 보기</button>
+    </div>`;
+  }).join("");
+}
+
+function viewContract(contractId) {
+  const contracts = state.contracts || [];
+  const c = contracts.find((x) => x.id === contractId);
+  if (!c) return;
+  const usersMap = {};
+  (state.students || []).forEach((s) => { usersMap[s.user.id] = s.user; });
+  const user = usersMap[c.userId] || {};
+
+  const coursesMap = {};
+  (state.courses || []).forEach((co) => { coursesMap[co.id] = co; });
+  const enrollment = (state.students || []).find((s) => s.user.id === c.userId)?.enrollment;
+  const courseList = (enrollment?.courseIds || []).map((id) => coursesMap[id]?.title || id).join(", ") || "-";
+
+  const sigHtml = (c.signatureImageData && c.signatureImageData.startsWith("data:image"))
+    ? `<img src="${c.signatureImageData}" style="width:120px;height:120px;border-radius:50%;border:2px solid #c0392b;object-fit:cover">`
+    : `<span style="color:var(--muted);font-size:13px">도장 서명 없음 (체크박스 동의)</span>`;
+
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>계약서 — ${escHtml(c.name)}</title>
+  <style>body{font-family:-apple-system,sans-serif;max-width:720px;margin:40px auto;color:#1a1a1a;line-height:1.7;padding:0 20px}
+  .hdr{border-bottom:3px solid #137a70;padding-bottom:12px;margin-bottom:28px;display:flex;align-items:center;gap:12px}
+  .badge{background:#137a70;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:4px}
+  h1{margin:0;font-size:20px}h3{color:#137a70;margin-top:22px}
+  table{width:100%;border-collapse:collapse;margin:20px 0}td{padding:9px 12px;border:1px solid #ddd}td:first-child{background:#f5f5f5;font-weight:600;width:130px}
+  .box{background:#f9f9f9;border:1px solid #ddd;border-radius:8px;padding:18px 22px;margin:20px 0}
+  .sig{border:2px solid #137a70;border-radius:8px;padding:18px 22px;margin-top:28px;background:#f0faf9}
+  .footer{margin-top:36px;padding-top:14px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}
+  </style></head><body>
+  <div class="hdr"><span class="badge">카니발 라이언 LMS</span><h1>온라인 수강 계약서 (서명본)</h1></div>
+  <table>
+    <tr><td>성명</td><td>${escHtml(c.name)}</td></tr>
+    <tr><td>이메일</td><td>${escHtml(c.email)}</td></tr>
+    <tr><td>전화번호</td><td>${escHtml(c.phone || "-")}</td></tr>
+    <tr><td>생년월일</td><td>${escHtml(c.birthDate || "-")}</td></tr>
+    <tr><td>회원번호</td><td>${escHtml(user.memberId || "-")}</td></tr>
+    <tr><td>수강 강의</td><td>${escHtml(courseList)}</td></tr>
+  </table>
+  <div class="box">
+    <h3 style="margin-top:0">주요 계약 조항 요약</h3>
+    <p>① DRM 보호 강의이며 녹화·캡처·재배포 금지<br>
+    ② 최대 3대 기기 이용 가능 (초과 시 차단)<br>
+    ③ 무단 배포 시 영상 1편당 <strong>200만원 이상 손해배상</strong><br>
+    ④ 수강 시작 7일 이내 환불 가능 (20% 초과 시 제한)<br>
+    ⑤ 개인정보(성명·이메일·전화·생년월일) 수강 관리 목적 수집</p>
+  </div>
+  <div class="sig">
+    <p style="font-weight:700;margin:0 0 14px">위 내용을 모두 읽고 동의하여 서명합니다.</p>
+    <table style="border:none;margin:0"><tr style="border:none">
+      <td style="border:none;padding:0;background:none;width:auto"><div>
+        <div style="font-size:12px;color:#555">서명자</div>
+        <div style="font-size:15px;font-weight:700;margin:2px 0 10px">${escHtml(c.name)} (${escHtml(c.email)})</div>
+        <div style="font-size:12px;color:#555">서명 일시</div>
+        <div style="font-size:15px;font-weight:700;margin:2px 0 10px">${escHtml(c.signedAt)}</div>
+        <div style="font-size:12px;color:#555">접속 IP</div>
+        <div style="font-size:13px;margin:2px 0">${escHtml(c.ipAddress || "-")}</div>
+      </div></td>
+      <td style="border:none;padding:0 0 0 32px;background:none;text-align:center;vertical-align:middle">${sigHtml}</td>
+    </tr></table>
+  </div>
+  <div style="margin-top:20px;font-size:11px;color:#888">
+    <b>문서 버전:</b> ${escHtml(c.version || "")}<br>
+    <b>SHA-256:</b> ${escHtml(c.documentHash || "")}
+  </div>
+  <div class="footer">카니발 라이언 LMS · Shuffleland</div>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  w.document.write(html);
+  w.document.close();
+}
+
 // expose for inline onclick
 window.openStudentModal = openStudentModal;
 window.resendInvite = resendInvite;
@@ -1176,5 +1278,6 @@ window.updateChapterAssignment = updateChapterAssignment;
 window.adminDeletePost = adminDeletePost;
 window.adminDeleteComment = adminDeleteComment;
 window.adminAddComment = adminAddComment;
+window.viewContract = viewContract;
 
 boot();

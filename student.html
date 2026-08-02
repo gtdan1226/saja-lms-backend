@@ -163,30 +163,80 @@
 <!-- ─ 계약서 모달 ──────────────────────────────────────── -->
 <dialog id="contractModal" class="contract-dialog">
   <div class="contract-inner">
-    <h2>수강 계약서</h2>
-    <p class="contract-subtitle">강의 시작 전 아래 내용을 읽고 동의해 주세요.</p>
-    <div class="contract-body">
-      <h3>콘텐츠 보호 정책</h3>
-      <p>본 강의는 DRM 기술로 보호됩니다. 녹화, 캡처, 재배포 시 법적 책임을 질 수 있습니다.</p>
-      <h3>수강 조건</h3>
-      <p>수강권은 1인 전용이며 타인과 공유할 수 없습니다. 최대 2대의 기기에서 이용 가능합니다.</p>
-      <h3>환불 규정</h3>
-      <p>수강 시작 후 7일 내에 환불이 가능합니다. 이후에는 환불이 불가합니다.</p>
-      <h3>개인정보 처리</h3>
-      <p>성명과 이메일은 수강 관리 및 수료증 발급에만 사용됩니다.</p>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span style="background:#137a70;color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px">SHUFFLELAND</span>
+      <h2 style="margin:0;font-size:18px">온라인 수강 계약서</h2>
     </div>
+    <p class="contract-subtitle">아래 내용을 꼼꼼히 읽고 서명을 완료해 주세요. 서명 완료 시 법적 효력이 발생합니다.</p>
+    <div class="contract-body">
+      <h3>제1조 (목적)</h3>
+      <p>본 계약은 Shuffleland(이하 "회사")가 운영하는 카니발 라이언 LMS(이하 "플랫폼")를 통해 제공하는 온라인 강의를 수강하는 수강생(이하 "수강생")의 권리와 의무를 명확히 하고, 콘텐츠를 보호하기 위한 상호 규칙을 정함을 목적으로 합니다.</p>
+
+      <h3>제2조 (콘텐츠 보호 정책)</h3>
+      <p>① 플랫폼의 모든 강의 영상은 DRM(Digital Rights Management) 기술로 보호됩니다.</p>
+      <p>② 수강생은 아래 행위를 명시적으로 금지합니다.</p>
+      <ul style="margin:6px 0 6px 18px;line-height:1.9">
+        <li>화면 녹화·캡처 프로그램을 사용한 영상 저장</li>
+        <li>스마트폰·외부 카메라 등 2차 기기를 이용한 촬영</li>
+        <li>그 밖의 방법으로 강의 영상을 복제·저장·유포하는 행위</li>
+      </ul>
+
+      <h3>제3조 (수강 조건 및 기기 제한)</h3>
+      <p>① 수강권은 1인에게만 발급되며, 타인에게 대여·양도·공유할 수 없습니다.</p>
+      <p>② 수강생은 <strong>최대 3대의 기기</strong>에서 플랫폼을 이용할 수 있으며, 3대를 초과하는 기기에서의 접속은 시스템에 의해 자동 차단됩니다.</p>
+      <p>③ 동일 수강권으로 2인 이상이 동시 접속하는 행위는 금지됩니다.</p>
+
+      <h3>제4조 (무단 배포 금지 및 손해배상)</h3>
+      <p>① 수강생이 강의 영상을 무단으로 녹화·복제·배포·판매하거나, 제3자가 접근할 수 있는 방식으로 공유하는 경우 해당 행위는 저작권법 위반 및 본 계약 위반으로 간주합니다.</p>
+      <p>② 위반 시 수강생은 회사에 대하여 <strong>유출·배포된 영상 1편당 2,000,000원(이백만 원) 이상</strong>의 손해배상 의무를 집니다. 실제 손해액이 이를 초과하는 경우 초과액도 청구될 수 있습니다.</p>
+      <p>③ 회사는 위반 사실 확인 즉시 수강권을 정지하고 형사·민사 법적 조치를 취할 수 있습니다.</p>
+
+      <h3>제5조 (환불 규정)</h3>
+      <p>① 수강 시작 후 7일 이내에는 환불을 신청할 수 있습니다. 단, 전체 챕터의 20% 이상 수강한 경우 환불이 제한될 수 있습니다.</p>
+      <p>② 수강 시작 7일 이후에는 환불이 불가합니다.</p>
+
+      <h3>제6조 (개인정보 처리)</h3>
+      <p>① 수강 관리, 수료증 발급, DRM 워터마크 적용 목적으로 성명, 이메일, 전화번호, 생년월일을 수집합니다.</p>
+      <p>② 수집된 정보는 강의 운영 외의 목적으로 사용하지 않으며, 법령에 의한 경우를 제외하고 제3자에게 제공하지 않습니다.</p>
+
+      <h3>제7조 (동의 및 서명)</h3>
+      <p>본 계약의 모든 조항을 이해하고 동의한다는 의미로 아래 정보를 입력하고 도장 서명을 완료해 주세요.</p>
+    </div>
+
     <div class="contract-form">
       <div class="form-row">
-        <label>성명</label>
+        <label>성명 <span class="req">*</span></label>
         <input type="text" id="contractName" placeholder="실명 입력" maxlength="30">
       </div>
       <div class="form-row">
-        <label>이메일</label>
+        <label>이메일 <span class="req">*</span></label>
         <input type="email" id="contractEmail" placeholder="주문 이메일">
       </div>
-      <label class="check-row">
+      <div class="form-row">
+        <label>전화번호 <span class="req">*</span></label>
+        <input type="tel" id="contractPhone" placeholder="010-0000-0000" maxlength="20">
+      </div>
+      <div class="form-row">
+        <label>생년월일 <span class="req">*</span></label>
+        <input type="date" id="contractBirthDate">
+      </div>
+
+      <div style="margin-top:16px">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">도장 서명 <span class="req">*</span></label>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">아래 원 안에 마우스(또는 손가락)로 서명해 주세요.</p>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="position:relative;width:160px;height:160px;flex-shrink:0">
+            <div style="position:absolute;inset:0;border-radius:50%;border:2px dashed #c0392b;pointer-events:none"></div>
+            <canvas id="contractStamp" width="160" height="160"
+              style="border-radius:50%;cursor:crosshair;display:block"></canvas>
+          </div>
+          <button type="button" id="clearStamp" class="ghost-action micro">지우기</button>
+        </div>
+      </div>
+
+      <label class="check-row" style="margin-top:16px">
         <input type="checkbox" id="contractConfirm">
-        <span>위 내용을 모두 읽었으며 동의합니다.</span>
+        <span>위 계약 내용(제1조~제7조)을 모두 읽었으며, 모든 조항에 동의합니다.</span>
       </label>
     </div>
     <div class="contract-actions">

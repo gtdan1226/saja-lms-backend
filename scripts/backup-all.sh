@@ -147,71 +147,89 @@ for c in contracts:
     signed_at = c.get("signedAt", "")
     name = c.get("name", user.get("name", ""))
     email = c.get("email", user.get("email", ""))
+    phone = c.get("phone", user.get("phone", "-"))
+    birth_date = c.get("birthDate", "-")
     ip = c.get("ipAddress", "")
-    doc_ver = c.get("version", "LMS-CONTRACT-2026.07-A")
+    doc_ver = c.get("version", "LMS-CONTRACT-2026.08-B")
     doc_hash = c.get("documentHash", "")
     member_id = user.get("memberId", "")
+    sig_method = c.get("signatureMethod", "checkbox_agreement")
+    sig_image = c.get("signatureImageData", "")
+    sig_html = (f'<img src="{sig_image}" style="width:120px;height:120px;border-radius:50%;border:2px solid #c0392b;object-fit:cover">'
+                if sig_image.startswith("data:image") else
+                '<span style="color:#888;font-size:13px">도장 서명 없음 (체크박스 동의)</span>')
 
     html = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>수강 계약서 — {name}</title>
+<title>온라인 수강 계약서 — {name}</title>
 <style>
-  body {{ font-family: 'Apple SD Gothic Neo', sans-serif; max-width: 760px; margin: 48px auto; color: #1a1a1a; line-height: 1.7; }}
+  body {{ font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; max-width: 760px; margin: 48px auto; color: #1a1a1a; line-height: 1.75; padding: 0 16px; }}
   .header {{ border-bottom: 3px solid #137a70; padding-bottom: 16px; margin-bottom: 32px; display: flex; align-items: center; gap: 12px; }}
-  .logo {{ background: #137a70; color: #fff; font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 6px; }}
-  h1 {{ font-size: 22px; margin: 0; }}
-  h3 {{ color: #137a70; margin-top: 24px; }}
-  .info-table {{ width: 100%; border-collapse: collapse; margin: 24px 0; }}
-  .info-table td {{ padding: 10px 14px; border: 1px solid #ddd; }}
-  .info-table td:first-child {{ background: #f5f5f5; font-weight: 600; width: 140px; }}
-  .contract-box {{ background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 20px 24px; margin: 24px 0; }}
+  .logo {{ background: #137a70; color: #fff; font-weight: 700; font-size: 12px; padding: 5px 11px; border-radius: 5px; }}
+  h1 {{ font-size: 20px; margin: 0; }}
+  h3 {{ color: #137a70; margin-top: 22px; margin-bottom: 6px; font-size: 14px; }}
+  .info-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+  .info-table td {{ padding: 9px 13px; border: 1px solid #ddd; font-size: 14px; }}
+  .info-table td:first-child {{ background: #f5f5f5; font-weight: 600; width: 120px; }}
+  .contract-box {{ background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 18px 22px; margin: 20px 0; font-size: 13.5px; }}
   .contract-box h3 {{ margin-top: 0; }}
-  .sig-box {{ border: 2px solid #137a70; border-radius: 8px; padding: 20px 24px; margin-top: 32px; background: #f0faf9; }}
-  .sig-box .sig-label {{ font-size: 13px; color: #555; }}
-  .sig-box .sig-value {{ font-size: 16px; font-weight: 700; margin: 4px 0 12px; }}
+  .contract-box ul {{ margin: 4px 0 4px 18px; }}
+  .sig-box {{ border: 2px solid #137a70; border-radius: 8px; padding: 20px 24px; margin-top: 28px; background: #f0faf9; display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }}
+  .sig-info .sig-label {{ font-size: 12px; color: #555; }}
+  .sig-info .sig-value {{ font-size: 15px; font-weight: 700; margin: 2px 0 10px; }}
   .hash {{ font-family: monospace; font-size: 11px; color: #888; word-break: break-all; }}
-  .footer {{ margin-top: 40px; padding-top: 16px; border-top: 1px solid #eee; font-size: 12px; color: #aaa; text-align: center; }}
+  .footer {{ margin-top: 36px; padding-top: 14px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; text-align: center; }}
 </style>
 </head>
 <body>
 <div class="header">
   <span class="logo">카니발 라이언 LMS</span>
-  <h1>수강 계약서 (최종 서명본)</h1>
+  <h1>온라인 수강 계약서 (최종 서명본)</h1>
 </div>
 
 <table class="info-table">
   <tr><td>성명</td><td>{name}</td></tr>
   <tr><td>이메일</td><td>{email}</td></tr>
+  <tr><td>전화번호</td><td>{phone}</td></tr>
+  <tr><td>생년월일</td><td>{birth_date}</td></tr>
   <tr><td>회원 ID</td><td>{member_id}</td></tr>
   <tr><td>수강 강의</td><td><ul style="margin:0;padding-left:18px">{course_list_html}</ul></td></tr>
 </table>
 
 <div class="contract-box">
-  <h3>콘텐츠 보호 정책</h3>
-  <p>본 강의는 DRM 기술로 보호됩니다. 녹화, 캡처, 재배포 시 법적 책임을 질 수 있습니다.</p>
-  <h3>수강 조건</h3>
-  <p>수강권은 1인 전용이며 타인과 공유할 수 없습니다. 최대 2대의 기기에서 이용 가능합니다.</p>
-  <h3>환불 규정</h3>
-  <p>수강 시작 후 7일 내에 환불이 가능합니다. 이후에는 환불이 불가합니다.</p>
-  <h3>개인정보 처리</h3>
-  <p>성명과 이메일은 수강 관리 및 수료증 발급에만 사용됩니다.</p>
+  <h3>제2조 콘텐츠 보호</h3>
+  <p>DRM 기술로 보호되며 녹화·캡처·재배포 금지.</p>
+  <h3>제3조 기기 제한</h3>
+  <p>수강권 1인 전용. 최대 3대 기기 이용 가능 (초과 시 차단).</p>
+  <h3>제4조 무단 배포 및 손해배상</h3>
+  <p>무단 배포 시 <strong>영상 1편당 2,000,000원(이백만 원) 이상</strong> 손해배상 의무. 형사·민사 조치 가능.</p>
+  <h3>제5조 환불</h3>
+  <p>수강 시작 7일 이내 환불 가능. 20% 초과 수강 시 제한, 이후 불가.</p>
+  <h3>제6조 개인정보</h3>
+  <p>성명·이메일·전화번호·생년월일을 수강 관리 목적으로 수집.</p>
 </div>
 
 <div class="sig-box">
-  <p style="margin:0 0 16px;font-weight:700">위 내용을 모두 읽었으며 동의합니다. (전자 서명 완료)</p>
-  <div class="sig-label">서명자</div>
-  <div class="sig-value">{name} ({email})</div>
-  <div class="sig-label">서명 일시</div>
-  <div class="sig-value">{signed_at}</div>
-  <div class="sig-label">서명 방식</div>
-  <div class="sig-value">체크박스 동의 (checkbox_agreement)</div>
-  <div class="sig-label">접속 IP</div>
-  <div class="sig-value">{ip}</div>
+  <div class="sig-info">
+    <p style="margin:0 0 14px;font-weight:700">위 계약 내용을 모두 읽고 동의하여 서명합니다.</p>
+    <div class="sig-label">서명자</div>
+    <div class="sig-value">{name} ({email})</div>
+    <div class="sig-label">서명 일시</div>
+    <div class="sig-value">{signed_at}</div>
+    <div class="sig-label">서명 방식</div>
+    <div class="sig-value">{sig_method}</div>
+    <div class="sig-label">접속 IP</div>
+    <div class="sig-value">{ip}</div>
+  </div>
+  <div style="text-align:center">
+    <div style="font-size:12px;color:#555;margin-bottom:6px">도장 서명</div>
+    {sig_html}
+  </div>
 </div>
 
-<div style="margin-top:24px;font-size:12px;color:#888">
+<div style="margin-top:20px;font-size:11px;color:#888">
   <b>문서 버전:</b> {doc_ver}<br>
   <b>문서 해시 (SHA-256):</b><br>
   <span class="hash">{doc_hash}</span>

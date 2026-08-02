@@ -561,13 +561,52 @@ document.getElementById("submitBtn").addEventListener("click", async () => {
 });
 
 // ── Contract modal ──────────────────────────────────────────
+let _stampCtx = null, _stamping = false;
+
+function initStampCanvas() {
+  const canvas = document.getElementById("contractStamp");
+  if (!canvas || canvas._initialized) return;
+  canvas._initialized = true;
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#c0392b";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  function getPos(ev, cvs) {
+    const r = cvs.getBoundingClientRect();
+    const sx = cvs.width / r.width, sy = cvs.height / r.height;
+    return [(ev.clientX - r.left) * sx, (ev.clientY - r.top) * sy];
+  }
+
+  canvas.addEventListener("mousedown", (e) => { _stamping = true; ctx.beginPath(); const p = getPos(e, canvas); ctx.moveTo(p[0], p[1]); });
+  canvas.addEventListener("mousemove", (e) => { if (!_stamping) return; const p = getPos(e, canvas); ctx.lineTo(p[0], p[1]); ctx.stroke(); });
+  canvas.addEventListener("mouseup", () => { _stamping = false; });
+  canvas.addEventListener("mouseleave", () => { _stamping = false; });
+  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); _stamping = true; ctx.beginPath(); const p = getPos(e.touches[0], canvas); ctx.moveTo(p[0], p[1]); }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (!_stamping) return; const p = getPos(e.touches[0], canvas); ctx.lineTo(p[0], p[1]); ctx.stroke(); }, { passive: false });
+  canvas.addEventListener("touchend", () => { _stamping = false; });
+
+  document.getElementById("clearStamp").addEventListener("click", () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+}
+
+function isStampEmpty(canvas) {
+  const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] > 0) return false;
+  return true;
+}
+
 function openContractModal() {
   const modal = document.getElementById("contractModal");
   if (state.user) {
     document.getElementById("contractEmail").value = state.enrollment?.buyerEmail || "";
     document.getElementById("contractName").value = state.user?.name || "";
+    document.getElementById("contractPhone").value = state.user?.phone || "";
   }
   document.getElementById("contractError").textContent = "";
+  initStampCanvas();
   modal.showModal();
 }
 
@@ -578,13 +617,21 @@ document.getElementById("contractClose").addEventListener("click", () => {
 document.getElementById("contractSign").addEventListener("click", async () => {
   const name = document.getElementById("contractName").value.trim();
   const email = document.getElementById("contractEmail").value.trim();
+  const phone = document.getElementById("contractPhone").value.trim();
+  const birthDate = document.getElementById("contractBirthDate").value;
   const confirmed = document.getElementById("contractConfirm").checked;
+  const canvas = document.getElementById("contractStamp");
   const errEl = document.getElementById("contractError");
-  if (!name || !email || !confirmed) { errEl.textContent = "모든 항목을 입력하고 동의해 주세요."; return; }
+
+  if (!name || !email || !phone || !birthDate) { errEl.textContent = "성명·이메일·전화번호·생년월일을 모두 입력해 주세요."; return; }
+  if (isStampEmpty(canvas)) { errEl.textContent = "도장 서명을 완료해 주세요."; return; }
+  if (!confirmed) { errEl.textContent = "계약 내용에 동의해 주세요."; return; }
+
+  const signatureImageData = canvas.toDataURL("image/png");
   const res = await api("/api/contracts/sign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, confirmed }),
+    body: JSON.stringify({ name, email, phone, birthDate, confirmed, signatureImageData }),
   });
   const data = await res.json();
   if (!res.ok) { errEl.textContent = data.error || "서명 실패"; return; }

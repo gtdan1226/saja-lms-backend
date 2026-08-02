@@ -64,6 +64,7 @@
     <button class="admin-tab" data-tab="log">DRM 로그</button>
     <button class="admin-tab" data-tab="questions">1:1 질문 <span class="badge" id="qBadge"></span></button>
     <button class="admin-tab" data-tab="board">게시판</button>
+    <button class="admin-tab" data-tab="contracts">계약서</button>
   </div>
 
   <!-- ── 탭: 학생 관리 ──────────────────────────────────── -->
@@ -220,6 +221,15 @@
     <ul class="submission-queue" id="questionsList">
       <li class="empty-hint">질문이 없습니다.</li>
     </ul>
+  </section>
+
+  <!-- ── 탭: 계약서 ──────────────────────────────────── -->
+  <section class="admin-tab-content is-hidden" id="tabContracts">
+    <div class="admin-section-header">
+      <h2>서명된 계약서</h2>
+      <span class="muted-text" style="font-size:13px">계약서는 Dropbox 로컬에도 자동 백업됩니다.</span>
+    </div>
+    <div id="contractsList"><p class="empty-hint">불러오는 중...</p></div>
   </section>
 
   <!-- ── 탭: 게시판 ────────────────────────────────────── -->
