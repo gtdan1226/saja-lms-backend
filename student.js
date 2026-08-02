@@ -810,7 +810,23 @@ async function submitQuestion(courseId) {
   renderQa(courseId);
 }
 
+// ── Fullscreen ───────────────────────────────────────────────
+function toggleFullscreen() {
+  const frame = document.getElementById("videoFrame");
+  if (!document.fullscreenElement) {
+    frame.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+document.addEventListener("fullscreenchange", () => {
+  const btn = document.getElementById("fullscreenBtn");
+  if (btn) btn.textContent = document.fullscreenElement ? "창 모드" : "전체 화면";
+});
+
 // 인라인 onclick에서 호출 가능하도록 window에 노출
+window.toggleFullscreen = toggleFullscreen;
 window.createPost = createPost;
 window.deletePost = deletePost;
 window.addComment = addComment;
