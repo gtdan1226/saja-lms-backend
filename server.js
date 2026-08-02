@@ -1613,7 +1613,8 @@ async function handleApi(req, res, url) {
   // ── Board: get posts for a course ──
   if (req.method === "GET" && /^\/api\/courses\/[^/]+\/board$/.test(url.pathname)) {
     try {
-      const { user } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user } = requireStudent(req, db);
       const courseId = url.pathname.split("/")[3];
       if (!(user.role === "admin" || db.enrollments.find((e) => e.userId === user.id && (e.courseIds || []).includes(courseId)))) {
         fail(403, "수강 중인 강의가 아닙니다."); return;
@@ -1627,7 +1628,8 @@ async function handleApi(req, res, url) {
   // ── Board: create post ──
   if (req.method === "POST" && /^\/api\/courses\/[^/]+\/board\/posts$/.test(url.pathname)) {
     try {
-      const { user, enrollment } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user, enrollment } = requireStudent(req, db);
       const courseId = url.pathname.split("/")[3];
       if (!(enrollment?.courseIds || []).includes(courseId)) { fail(403, "수강 중인 강의가 아닙니다."); return; }
       const body = await readJson(req);
@@ -1654,7 +1656,8 @@ async function handleApi(req, res, url) {
   // ── Board: delete post ──
   if (req.method === "DELETE" && /^\/api\/courses\/[^/]+\/board\/posts\/[^/]+$/.test(url.pathname)) {
     try {
-      const { user } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user } = requireStudent(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[3]; const postId = parts[6];
       await updateDb((current) => {
@@ -1672,7 +1675,8 @@ async function handleApi(req, res, url) {
   // ── Board: add comment ──
   if (req.method === "POST" && /^\/api\/courses\/[^/]+\/board\/posts\/[^/]+\/comments$/.test(url.pathname)) {
     try {
-      const { user, enrollment } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user, enrollment } = requireStudent(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[3]; const postId = parts[6];
       if (!(enrollment?.courseIds || []).includes(courseId)) { fail(403, "수강 중인 강의가 아닙니다."); return; }
@@ -1703,7 +1707,8 @@ async function handleApi(req, res, url) {
   // ── Board: delete comment ──
   if (req.method === "DELETE" && /^\/api\/courses\/[^/]+\/board\/posts\/[^/]+\/comments\/[^/]+$/.test(url.pathname)) {
     try {
-      const { user } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user } = requireStudent(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[3]; const postId = parts[6]; const commentId = parts[8];
       await updateDb((current) => {
@@ -1723,7 +1728,8 @@ async function handleApi(req, res, url) {
   // ── Student: submit question ──
   if (req.method === "POST" && url.pathname === "/api/questions") {
     try {
-      const { user, enrollment } = await requireStudent(req, db);
+      const db = await readDb();
+      const { user, enrollment } = requireStudent(req, db);
       const body = await readJson(req);
       const courseId = String(body.courseId || "").trim();
       const content = String(body.content || "").trim().slice(0, 3000);
@@ -1752,19 +1758,19 @@ async function handleApi(req, res, url) {
   // ── Admin: answer question ──
   if (req.method === "POST" && /^\/api\/admin\/questions\/[^/]+\/answer$/.test(url.pathname)) {
     try {
-      await requireAdmin(req, db);
+      const authDb = await readDb();
+      requireAdmin(req, authDb);
       const questionId = url.pathname.split("/")[4];
       const body = await readJson(req);
       const answer = String(body.answer || "").trim().slice(0, 5000);
       if (!answer) { fail(400, "답변 내용을 입력해 주세요."); return; }
-      await updateDb((current) => {
+      const finalDb = await updateDb((current) => {
         const q = (current.questions || []).find((q) => q.id === questionId);
         if (!q) throw httpError(404, "질문을 찾을 수 없습니다.");
         q.answer = answer;
         q.answeredAt = new Date().toISOString();
       });
-      db = await readDb();
-      ok(toAdminState(db));
+      ok(toAdminState(finalDb));
     } catch (e) { fail(e.status || 500, e.message); }
     return;
   }
@@ -1772,7 +1778,8 @@ async function handleApi(req, res, url) {
   // ── Admin: delete board post ──
   if (req.method === "DELETE" && /^\/api\/admin\/board\/[^/]+\/posts\/[^/]+$/.test(url.pathname)) {
     try {
-      await requireAdmin(req, db);
+      const db = await readDb();
+      requireAdmin(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[4]; const postId = parts[6];
       await updateDb((current) => {
@@ -1788,6 +1795,7 @@ async function handleApi(req, res, url) {
   // ── Admin: add comment to board post ──
   if (req.method === "POST" && /^\/api\/admin\/board\/[^/]+\/posts\/[^/]+\/comments$/.test(url.pathname)) {
     try {
+      const db = await readDb();
       requireAdmin(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[4]; const postId = parts[6];
@@ -1813,6 +1821,7 @@ async function handleApi(req, res, url) {
   // ── Admin: delete board comment ──
   if (req.method === "DELETE" && /^\/api\/admin\/board\/[^/]+\/posts\/[^/]+\/comments\/[^/]+$/.test(url.pathname)) {
     try {
+      const db = await readDb();
       requireAdmin(req, db);
       const parts = url.pathname.split("/");
       const courseId = parts[4]; const postId = parts[6]; const commentId = parts[8];
