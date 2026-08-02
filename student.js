@@ -320,8 +320,11 @@ function showError(msg) {
 function startWatermark() {
   const wm = document.getElementById("watermark");
   const u = state?.user;
+  const activeSession = state?.drm?.activeSession;
   if (!u) return;
-  wm.textContent = `${u.name} · ${u.email}`;
+  const subject = activeSession?.watermarkSubject || "";
+  const parts = subject ? subject.split("|") : [u.name || "", u.memberId || "", ""];
+  wm.innerHTML = parts.map((p) => `<span style="display:block">${p}</span>`).join("");
   wm.style.display = "";
   stopWatermark();
   function reposition() {

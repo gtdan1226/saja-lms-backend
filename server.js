@@ -838,6 +838,7 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/playback/sessions") {
     const body = await readJson(req);
     let uid, playbackError = null;
+    const clientIp = (req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "").split(",")[0]?.trim() || "unknown";
     const r2Url = await generateR2PlaybackUrl(body.courseId, body.chapterId);
     const db = await updateDb((current) => {
       const { user, enrollment } = requireStudent(req, current);
@@ -868,7 +869,7 @@ async function handleApi(req, res, url) {
         tokenHash: sha256hex(token), tokenPreview: `${token.slice(0, 12)}...${token.slice(-6)}`,
         issuedAt: formatNow(), expiresAt, deviceId: userDevices[0]?.id, deviceLabel: userDevices[0]?.label,
         keySystems: course.videoAsset.keySystems,
-        watermarkSubject: `${user.name} · ${user.email} · ${user.memberId}`,
+        watermarkSubject: `${user.name}|${user.memberId}|${clientIp}`,
       };
       const key = `${user.id}:${course.id}:${chapter.id}`;
       current.progress[key] = Math.max(current.progress[key] || 0, 45);
