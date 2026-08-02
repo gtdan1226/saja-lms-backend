@@ -199,14 +199,34 @@ function renderVideoSection(course) {
   section.style.display = "";
   const activeSession = state.drm?.activeSession;
   const isForThisCourse = activeSession?.courseId === course.id;
+  const video = document.getElementById("courseVideo");
 
   if (isForThisCourse && activeChapterId === activeSession.chapterId) {
     document.getElementById("videoPlaceholder").style.display = "none";
     document.getElementById("drmBar").style.display = "";
     const ch = course.chapters.find((c) => c.id === activeSession.chapterId);
     document.getElementById("drmLabel").textContent = `${activeSession.chapterLabel} · ${ch?.title || ""} 재생 중`;
+    // presigned R2 URL을 video 태그에 연결
+    const manifestUrl = activeSession.manifestUrl;
+    if (manifestUrl && video.dataset.loadedUrl !== manifestUrl) {
+      video.src = manifestUrl;
+      video.dataset.loadedUrl = manifestUrl;
+      video.style.display = "block";
+      video.play().catch(() => {});
+    } else if (manifestUrl) {
+      video.style.display = "block";
+    } else {
+      video.style.display = "none";
+      document.getElementById("videoPlaceholder").style.display = "";
+      document.getElementById("videoMeta").textContent = "영상 파일이 아직 업로드되지 않았습니다.";
+    }
     startWatermark();
   } else {
+    // 세션 없음 — 플레이스홀더 표시, 비디오 숨김
+    video.pause();
+    video.style.display = "none";
+    video.src = "";
+    delete video.dataset.loadedUrl;
     document.getElementById("videoPlaceholder").style.display = "";
     document.getElementById("drmBar").style.display = "none";
     document.getElementById("videoMeta").textContent = activeChapterId
@@ -507,6 +527,10 @@ document.getElementById("playBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("endSessionBtn").addEventListener("click", async () => {
+  const video = document.getElementById("courseVideo");
+  video.pause();
+  video.src = "";
+  delete video.dataset.loadedUrl;
   const res = await api("/api/drm/sessions/revoke", { method: "POST" });
   if (res.ok) { state = await res.json(); render(); }
 });

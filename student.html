@@ -84,12 +84,18 @@
     <!-- 비디오 섹션 -->
     <section class="video-section" id="videoSection" style="display:none">
       <div class="video-frame" id="videoFrame">
+        <!-- 재생 전 플레이스홀더 -->
         <div class="video-placeholder" id="videoPlaceholder">
           <div class="play-btn-wrap">
             <button class="play-btn" id="playBtn">▶ 재생 시작</button>
           </div>
           <p class="video-meta" id="videoMeta"></p>
         </div>
+        <!-- 실제 비디오 플레이어 -->
+        <video id="courseVideo"
+          style="display:none;width:100%;height:100%;position:absolute;top:0;left:0;background:#000;outline:none"
+          controls playsinline controlsList="nodownload">
+        </video>
         <div class="watermark" id="watermark"></div>
       </div>
 
